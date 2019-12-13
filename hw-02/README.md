@@ -11,6 +11,7 @@
 ### Добавление дисков в Vagrantfile
 
 [Vagrantfile](Vagrantfile) с добавленными дисками находится в каталоге.
+
 За добавление диска отвечает блок:
 ```ruby
 :sata5 => {
@@ -24,11 +25,13 @@
 home = ENV['HOME']
 ```
 В приложенном [Vagrantfile](Vagrantfile) создаётся шесть дополнительных дисков.
+
 Чтобы создать виртуальную машину при помощи указанного Vagrantfile, необходимо в папке с ним выполнить команду `vagrant up`. Далее заходим на эту машину при помощи команды `vagrant ssh`.
 
 ### Сборка RAID-массива
 
 В данном домашнем задании создаётся RAID 10.
+
 Выведем список всех дисков:
 ```bash
 [root@otuslinux vagrant]# lsblk
@@ -189,12 +192,19 @@ tmpfs           100M     0  100M   0% /run/user/1000
 ### Дополнительное задание
 
 Задание со звёздочкой: Vagrantfile, который сразу собирает систему с подключенным рейдом.
+
 Для этого добавим в Vagrantfile к box.vm.provision следующие строки:
+
 `mdadm --zero-superblock --force /dev/sd{b,c,d,e,f,g}` — обнуляем суперблоки;
+
 `mdadm --create --verbose /dev/md0 --level=10 --raid-devices=6 /dev/sd{b,c,d,e,f,g}` — создаём массив;
+
 `mkfs.ext4 /dev/md0` — создаём в массиве файловую систему;
+
 `mkdir -p /mnt/md0` — создаём точку монтирования;
+
 `mount /dev/md0 /mnt/md0` — монтируем файловую систему.
+
 Таким образом, провижининг в Vagrantfile приобретёт следующий вид:
 ```ruby
 box.vm.provision "shell", inline: <<-SHELL
