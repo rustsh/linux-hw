@@ -2,7 +2,7 @@
 
 В каталоге находится [Vagrantfile](Vagrantfile) для разворачивания образа с Centos 7 и обновлённым ядром:
 
-```bash
+```console
 [vagrant@kernel-update ~]$ uname -r
 5.3.9-1.el7.elrepo.x86_64
 ```
