@@ -8,3 +8,7 @@
 ```
 
 Ссылка на сам образ в Vagrant Cloud: https://app.vagrantup.com/rustsh/boxes/centos-7-5
+
+<br/>
+
+[Вернуться к списку всех ДЗ](..)
