@@ -33,7 +33,7 @@ home = ENV['HOME']
 В данном домашнем задании создаётся RAID 10.
 
 Выведем список всех дисков:
-```bash
+```console
 [root@otuslinux vagrant]# lsblk
 NAME   MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
 sda      8:0    0   40G  0 disk 
@@ -46,7 +46,7 @@ sdf      8:80   0  250M  0 disk
 sdg      8:96   0  250M  0 disk
 ```
 Создадим массив:
-```bash
+```console
 [root@otuslinux vagrant]# mdadm --create --verbose /dev/md0 --level=10 --raid-devices=6 /dev/sd{b,c,d,e,f,g}
 mdadm: layout defaults to n2
 mdadm: layout defaults to n2
@@ -56,13 +56,13 @@ mdadm: Defaulting to version 1.2 metadata
 mdadm: array /dev/md0 started.
 ```
 Проверим:
-```bash
+```console
 [root@otuslinux vagrant]# cat /proc/mdstat
 Personalities : [raid10] 
 md0 : active raid10 sdg[5] sdf[4] sde[3] sdd[2] sdc[1] sdb[0]
       761856 blocks super 1.2 512K chunks 2 near-copies [6/6] [UUUUUU]
 ```
-```bash
+```console
 [root@otuslinux vagrant]# mdadm --detail /dev/md0
 /dev/md0:
            Version : 1.2
@@ -98,7 +98,7 @@ Consistency Policy : resync
        4       8       80        4      active sync set-A   /dev/sdf
        5       8       96        5      active sync set-B   /dev/sdg
 ```
-```bash
+```console
 [root@otuslinux vagrant]# lsblk
 NAME   MAJ:MIN RM  SIZE RO TYPE   MOUNTPOINT
 sda      8:0    0   40G  0 disk   
@@ -121,7 +121,7 @@ sdg      8:96   0  250M  0 disk
 ### Поломка и восстановление RAID-массива
 
 Пометим один из дисков как сбойный и проверим результат:
-```bash
+```console
 [root@otuslinux vagrant]# mdadm /dev/md0 --fail /dev/sde
 mdadm: set /dev/sde faulty in /dev/md0
 [root@otuslinux vagrant]# cat /proc/mdstat
@@ -130,14 +130,14 @@ md0 : active raid10 sdg[5] sdf[4] sde[3](F) sdd[2] sdc[1] sdb[0]
       761856 blocks super 1.2 512K chunks 2 near-copies [6/5] [UUU_UU]
 ```
 Удалим сбойный диск и добавим новый:
-```bash
+```console
 [root@otuslinux vagrant]# mdadm /dev/md0 --remove /dev/sde
 mdadm: hot removed /dev/sde from /dev/md0
 [root@otuslinux vagrant]# mdadm /dev/md0 --add /dev/sde
 mdadm: added /dev/sde
 ```
 Посмотрим процесс ребилда:
-```bash
+```console
 [root@otuslinux vagrant]# cat /proc/mdstat
 Personalities : [raid10] 
 md0 : active raid10 sde[6] sdg[5] sdf[4] sdd[2] sdc[1] sdb[0]
@@ -145,7 +145,7 @@ md0 : active raid10 sde[6] sdg[5] sdf[4] sdd[2] sdc[1] sdb[0]
       [==============>......]  recovery = 73.0% (186112/253952) finish=0.0min speed=46528K/sec
 ```
 И результат:
-```bash
+```console
 [root@otuslinux vagrant]# cat /proc/mdstat
 Personalities : [raid10] 
 md0 : active raid10 sde[6] sdg[5] sdf[4] sdd[2] sdc[1] sdb[0]
@@ -155,11 +155,11 @@ md0 : active raid10 sde[6] sdg[5] sdf[4] sdd[2] sdc[1] sdb[0]
 ### Создание структуры GPT и пяти разделов
 
 Создаем раздел GPT на RAID:
-```bash
+```console
 [root@otuslinux vagrant]# parted -s /dev/md0 mklabel gpt
 ```
 Создаем партиции:
-```bash
+```console
 [root@otuslinux vagrant]# parted /dev/md0 mkpart primary ext4 0% 20%
 [root@otuslinux vagrant]# parted /dev/md0 mkpart primary ext4 20% 40%
 [root@otuslinux vagrant]# parted /dev/md0 mkpart primary ext4 40% 60%
@@ -167,13 +167,13 @@ md0 : active raid10 sde[6] sdg[5] sdf[4] sdd[2] sdc[1] sdb[0]
 [root@otuslinux vagrant]# parted /dev/md0 mkpart primary ext4 80% 100%
 ```
 Создаём на этих партициях ФС и монтируем их по каталогам:
-```bash
+```console
 [root@otuslinux vagrant]# for i in $(seq 1 5); do sudo mkfs.ext4 /dev/md0p$i; done
 [root@otuslinux vagrant]# mkdir -p /raid/part{1,2,3,4,5}
 [root@otuslinux vagrant]# for i in $(seq 1 5); do mount /dev/md0p$i /raid/part$i; done
 ```
 Проверяем:
-```bash
+```console
 [root@otuslinux vagrant]# df -h
 Filesystem      Size  Used Avail Use% Mounted on
 /dev/sda1        40G  2.9G   38G   8% /
@@ -219,7 +219,7 @@ box.vm.provision "shell", inline: <<-SHELL
 SHELL
 ```
 Выполним команды `vagrant up` и `vagrant ssh` и проверим, что массив создан и примонтирован:
-```bash
+```console
 [vagrant@otuslinux ~]$ lsblk
 NAME   MAJ:MIN RM  SIZE RO TYPE   MOUNTPOINT
 sda      8:0    0   40G  0 disk   
@@ -237,13 +237,13 @@ sdf      8:80   0  250M  0 disk
 sdg      8:96   0  250M  0 disk   
 `-md0    9:0    0  744M  0 raid10 /mnt/md0
 ```
-```bash
+```console
 [vagrant@otuslinux ~]$ cat /proc/mdstat 
 Personalities : [raid10] 
 md0 : active raid10 sdg[5] sdf[4] sde[3] sdd[2] sdc[1] sdb[0]
       761856 blocks super 1.2 512K chunks 2 near-copies [6/6] [UUUUUU]
 ```
-```bash
+```console
 [vagrant@otuslinux ~]$ df -h
 Filesystem      Size  Used Avail Use% Mounted on
 /dev/sda1        40G  2.9G   38G   8% /
@@ -257,4 +257,4 @@ tmpfs           100M     0  100M   0% /run/user/1000
 
 <br/>
 
-[Вернуться к списку всех ДЗ](..)
+[Вернуться к списку всех ДЗ](../README.md)
