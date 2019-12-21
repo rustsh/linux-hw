@@ -613,7 +613,15 @@ mypool                          zfs   9.7G     0  9.7G   0% /mypool
 mypool/opt                      zfs   9.7G     0  9.7G   0% /mypool/opt
 ```
 
-Если бы каталог **/opt** был пуст, его можно было бы сразу указать как точку монтирования для ZFS, однако в нашем случае в нём есть файлы, и система не даст это сделать. Вместо этого перенём всё содержимое каталога **/opt** в новую ФС:
+Если бы каталог **/opt** был пуст, его можно было бы сразу указать как точку монтирования для ZFS, однако в нашем случае в нём есть файлы, и система не даст это сделать:
+
+```console
+[root@lvm vagrant]# zfs set mountpoint=/opt mypool/opt
+cannot mount '/opt': directory is not empty
+property may be set but unable to remount filesystem
+```
+
+Вместо этого перенём всё содержимое каталога **/opt** в новую ФС:
 
 ```console
 [root@lvm vagrant]# mv /opt/* /mypool/opt/
