@@ -829,13 +829,13 @@ config:
             sde     ONLINE       0     0     0
 
 errors: No known data errors
-[root@lvm vagrant]# df -h -x tmpfs -x devtmpfs
-Filesystem                       Size  Used Avail Use% Mounted on
-/dev/mapper/VolGroup00-LogVol00   38G  770M   37G   3% /
-/dev/sda2                       1014M   63M  952M   7% /boot
-mypool                           9.7G     0  9.7G   0% /mypool
-mypool/opt                       9.7G     0  9.7G   0% /opt
-testpool                         880M     0  880M   0% /testpool
+[root@lvm vagrant]# df -Th -x tmpfs -x devtmpfs
+Filesystem                      Type  Size  Used Avail Use% Mounted on
+/dev/mapper/VolGroup00-LogVol00 xfs    38G  771M   37G   3% /
+/dev/sda2                       xfs  1014M   63M  952M   7% /boot
+mypool                          zfs   9.7G     0  9.7G   0% /mypool
+mypool/opt                      zfs   9.7G     0  9.7G   0% /opt
+testpool                        zfs   880M     0  880M   0% /testpool
 ```
 
 <br/>
