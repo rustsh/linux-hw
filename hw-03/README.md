@@ -2,17 +2,23 @@
 
 ### Оглавление
 
-- [Уменьшение тома под **/** до 8 Гб](#уменьшение-тома-под-до-8-гб)
+- [Уменьшение тома под **/** до 8 Гб](#уменьшение-тома-под--до-8-гб)
 - [Выделение тома под **/var**, преобразование в mirror](#выделение-тома-под-var-преобразование-в-mirror)
 - [Выделение тома под **/home**](#выделение-тома-под-home)
 - [Создание тома для снэпшотов **/home**](#создание-тома-для-снэпшотов-home)
+- [Дополнительное задание](#дополнительное-задание)
+  - [Установка ZFS в CentOS 7](#установка-zfs-в-centos-7)
+  - [Создание пула, размещение **/opt**](#создание-пула-размещение-opt)
+  - [Работа со снэпшотом](#работа-со-снэпшотом)
+  - [Добавление и удаление устройств из пула](#добавление-и-удаление-устройств-из-пула)
+  - [Создание зеркалированного пула](#создание-зеркалированного-пула)
 
 
 Для начала необходимо развернуть виртуальную машину из [Vagrantfile](Vagrantfile) при помощи команды `vagrant up`. Далее заходим в неё командой `vagrant ssh` и логинимся как суперпользователь (так как все работы требуют повышенных прав).
 
 ### Уменьшение тома под **/** до 8 Гб
 
-Подготовим временный том для **/** раздела, создадим на нем файловую систему и смонтируем его, чтобы перенести туда данные:
+Подготовим временный том для раздела **/**, создадим на нем файловую систему и смонтируем его, чтобы перенести туда данные:
 
 ```console
 [root@lvm vagrant]# pvcreate /dev/sdb
@@ -36,7 +42,7 @@ realtime =none                   extsz=4096   blocks=0, rtextents=0
 /dev/mapper/vg_root-lv_root     xfs        10G   33M   10G   1% /mnt
 ```
 
-Скопируем все данные с **/** раздела в **/mnt**:
+Скопируем все данные с раздела **/** в **/mnt**:
 
 ```console
 [root@lvm vagrant]# xfsdump -J - /dev/VolGroup00/LogVol00 | xfsrestore -J - /mnt
@@ -92,7 +98,7 @@ done
 
 Для того, чтобы при загрузке был смонтирован нужный **root**, в файле **/boot/grub2/grub.cfg** заменим `rd.lvm.lv=VolGroup00/LogVol00` на `rd.lvm.lv=vg_root/lv_root`.
 
-Перезагружаем виртуальную машину командой `vagrant reload`, выполненной на хосте. Убедиться в том, что загрузка прошла с новым корневым каталогом, можно, посмотрев вывод `lsblk`:
+Перезагружаем виртуальную машину командой `vagrant reload`, выполнив её на хосте. Убедиться в том, что корневой каталог теперь размещается в новом разделе, можно, посмотрев вывод `lsblk`:
 
 ```console
 [vagrant@lvm ~]$ lsblk
@@ -110,7 +116,7 @@ sdd                       8:48   0    1G  0 disk
 sde                       8:64   0    1G  0 disk
 ```
 
-Удаляем старый Logical Volume размером в 40 Гб и создаем новый на 8 Гб:
+Удаляем старый Logical Volume размером 40 Гб и создаем новый на 8 Гб:
 
 ```console
 [root@lvm vagrant]# lvremove /dev/VolGroup00/LogVol00
@@ -214,7 +220,7 @@ Writing superblocks and filesystem accounting information: done
 [root@lvm boot]# mkdir /tmp/oldvar && mv /var/* /tmp/oldvar
 ```
 
-Монтируем новый **var** в каталог **/var***:
+Монтируем новый **var** в каталог **/var**:
 
 ```console
 [root@lvm boot]# umount /mnt
@@ -266,7 +272,7 @@ sde                        8:64   0    1G  0 disk
 
 ### Выделение тома под **/home**
 
-Выделяем том под **/home** и переносим в него содержимое каталога **/home/**:
+Выделяем том под **/home** и переносим в него содержимое каталога **/home/** по аналогии с **var**:
 
 ```console
 [root@lvm vagrant]# lvcreate -n LogVol_Home -L 2G /dev/VolGroup00
@@ -382,6 +388,8 @@ total 0
 drwx------. 3 vagrant vagrant 95 Dec 17 23:39 vagrant
 ```
 
+Восстановим эти файлы со снапшота:
+
 ```console
 [root@lvm vagrant]# umount /home
 [root@lvm vagrant]# lvconvert --merge /dev/VolGroup00/home_snap 
@@ -390,7 +398,7 @@ drwx------. 3 vagrant vagrant 95 Dec 17 23:39 vagrant
 [root@lvm vagrant]# mount /home
 ```
 
-Восстановим эти файлы со снапшота:
+Проверим, что файлы восстановились:
 
 ```console
 [root@lvm vagrant]# ll /home/
@@ -416,6 +424,418 @@ total 0
 -rw-r--r--. 1 root    root     0 Dec 18 22:15 file8
 -rw-r--r--. 1 root    root     0 Dec 18 22:15 file9
 drwx------. 3 vagrant vagrant 95 Dec 17 23:39 vagrant
+```
+
+### Дополнительное задание
+
+Задание со звёздочкой: работа с ZFS.
+
+В ZFS встроены возможности по управлению снэпшотами и пулами хранения, что позволяет обойтись без системы управления томами, такой как LVM, и использовать одни только возможности файловой системы.
+
+Следует отметить, что формально портирование ZFS на Linux выполнить нельзя по причине несовместимости лицензии CDDL, по которой распространяется ZFS, и лицензии GPL, по которой распространяется ядро Linux, а также патентных запретов, защищающих ZFS. 
+
+Для выполнения этого задания виртуальная машина была предварительно удалена при помощи команды `vagtant destroy` и создана заново, чтобы пересоздать все диски:
+
+```console
+[root@lvm vagrant]# lsblk
+NAME                    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+sda                       8:0    0   40G  0 disk 
+├─sda1                    8:1    0    1M  0 part 
+├─sda2                    8:2    0    1G  0 part /boot
+└─sda3                    8:3    0   39G  0 part 
+  ├─VolGroup00-LogVol00 253:0    0 37.5G  0 lvm  /
+  └─VolGroup00-LogVol01 253:1    0  1.5G  0 lvm  [SWAP]
+sdb                       8:16   0   10G  0 disk 
+sdc                       8:32   0    2G  0 disk 
+sdd                       8:48   0    1G  0 disk 
+sde                       8:64   0    1G  0 disk
+```
+
+#### Установка ZFS в CentOS 7
+
+Для начала проверим, какая именно версия CentOS установлена, и добавим соответствующий репозиторий ZFSonLinux:
+
+```console
+[root@lvm vagrant]# cat /etc/redhat-release
+CentOS Linux release 7.5.1804 (Core) 
+[root@lvm vagrant]# yum install -y http://download.zfsonlinux.org/epel/zfs-release.el7_5.noarch.rpm
+...
+Installed:
+  zfs-release.noarch 0:1-5.el7.centos                                                                                                                                                     
+Complete!
+```
+
+Модуль ZFS может быть загружен в ядро двумя способами: DKMS и kABI. Если используется DKMS, то при обновлении ядра CentOS модуль ZFS необходимо перекомпилировать, тогда как для kABI этого не требуется. Поэтому мы будем использовать kABI.
+
+При установке репозитория ZFS на CentOS 7 по умолчанию включен DKMS. Для того, чтобы эту настройку поменять, нужно в файле **/etc/yum.repos.d/zfs.repo** указать значение ключа `enabled` в блоке `[zfs]` равным `0`, а в блоке `[zfs-kmod]` — `1`:
+
+```ini
+[zfs]
+name=ZFS on Linux for EL7 - dkms
+baseurl=http://download.zfsonlinux.org/epel/7.5/$basearch/
+enabled=0
+metadata_expire=7d
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-zfsonlinux
+
+[zfs-kmod]
+name=ZFS on Linux for EL7 - kmod
+baseurl=http://download.zfsonlinux.org/epel/7.5/kmod/$basearch/
+enabled=1
+metadata_expire=7d
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-zfsonlinux
+```
+
+Теперь можно установить саму ZFS:
+
+```console
+[root@lvm vagrant]# yum install -y zfs
+...
+Installed:
+  zfs.x86_64 0:0.7.12-1.el7_5                                                                                                                                                             
+Dependency Installed:
+  kmod-spl.x86_64 0:0.7.12-1.el7_5        kmod-zfs.x86_64 0:0.7.12-1.el7_5         libnvpair1.x86_64 0:0.7.12-1.el7_5                             libuutil1.x86_64 0:0.7.12-1.el7_5       
+  libzfs2.x86_64 0:0.7.12-1.el7_5         libzpool2.x86_64 0:0.7.12-1.el7_5        lm_sensors-libs.x86_64 0:3.4.0-8.20160601gitf9185e5.el7        spl.x86_64 0:0.7.12-1.el7_5             
+  sysstat.x86_64 0:10.1.5-18.el7         
+
+Complete!
+```
+
+Перезагрузим виртуальную машину командой `vagrant reload`, выполнив её на хосте, затем опять залогинимся в неё при помощи `vagrant ssh`.
+
+Загрузим модуль ZFS в ядро и проверим, что загрузка прошла успешно:
+
+```console
+[root@lvm vagrant]# modprobe zfs
+[root@lvm vagrant]# lsmod | grep zfs
+zfs                  3564468  0 
+zunicode              331170  1 zfs
+zavl                   15236  1 zfs
+icp                   270148  1 zfs
+zcommon                73440  1 zfs
+znvpair                89131  2 zfs,zcommon
+spl                   102412  4 icp,zfs,zcommon,znvpair
+```
+
+#### Создание пула, размещение **/opt**
+
+Создадим в каталоге **/opt** несколько файлов для того, чтобы потом проверить перенос:
+
+```console
+[root@lvm vagrant]# touch /opt/file{1..10}
+[root@lvm vagrant]# ll /opt
+total 0
+-rw-r--r--. 1 root root 0 Dec 21 11:05 file1
+-rw-r--r--. 1 root root 0 Dec 21 11:05 file10
+-rw-r--r--. 1 root root 0 Dec 21 11:05 file2
+-rw-r--r--. 1 root root 0 Dec 21 11:05 file3
+-rw-r--r--. 1 root root 0 Dec 21 11:05 file4
+-rw-r--r--. 1 root root 0 Dec 21 11:05 file5
+-rw-r--r--. 1 root root 0 Dec 21 11:05 file6
+-rw-r--r--. 1 root root 0 Dec 21 11:05 file7
+-rw-r--r--. 1 root root 0 Dec 21 11:05 file8
+-rw-r--r--. 1 root root 0 Dec 21 11:05 file9
+```
+
+Создадим пул хранения данных на устройстве **/dev/sdb** и укажем **/dev/sdc** как устройство кэширования:
+
+```console
+[root@lvm vagrant]# zpool create mypool /dev/sdb cache /dev/sdc
+[root@lvm vagrant]# zpool list
+NAME     SIZE  ALLOC   FREE  EXPANDSZ   FRAG    CAP  DEDUP  HEALTH  ALTROOT
+mypool  9.94G   150K  9.94G         -     0%     0%  1.00x  ONLINE  -
+[root@lvm vagrant]# zpool status
+  pool: mypool
+ state: ONLINE
+  scan: none requested
+config:
+
+        NAME        STATE     READ WRITE CKSUM
+        mypool      ONLINE       0     0     0
+          sdb       ONLINE       0     0     0
+        cache
+          sdc       ONLINE       0     0     0
+
+errors: No known data errors
+[root@lvm vagrant]# lsblk
+NAME                    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+sda                       8:0    0   40G  0 disk 
+├─sda1                    8:1    0    1M  0 part 
+├─sda2                    8:2    0    1G  0 part /boot
+└─sda3                    8:3    0   39G  0 part 
+  ├─VolGroup00-LogVol00 253:0    0 37.5G  0 lvm  /
+  └─VolGroup00-LogVol01 253:1    0  1.5G  0 lvm  [SWAP]
+sdb                       8:16   0   10G  0 disk 
+├─sdb1                    8:17   0   10G  0 part 
+└─sdb9                    8:25   0    8M  0 part 
+sdc                       8:32   0    2G  0 disk 
+├─sdc1                    8:33   0    2G  0 part 
+└─sdc9                    8:41   0    8M  0 part 
+sdd                       8:48   0    1G  0 disk 
+sde                       8:64   0    1G  0 disk 
+```
+
+Точка монтирования создалась автоматически:
+
+```console
+[root@lvm vagrant]# zfs mount
+mypool                          /mypool
+[root@lvm vagrant]# df -Th -x devtmpfs -x tmpfs
+Filesystem                      Type  Size  Used Avail Use% Mounted on
+/dev/mapper/VolGroup00-LogVol00 xfs    38G  769M   37G   3% /
+/dev/sda2                       xfs  1014M   63M  952M   7% /boot
+mypool                          zfs   9.7G  128K  9.7G   1% /mypool
+```
+
+В принципе, каталог **/opt** можно перенести в сам пул, но мы создадим в нём отдельную файловую систему для этого:
+
+```console
+[root@lvm vagrant]# zfs create mypool/opt
+[root@lvm vagrant]# zfs list
+NAME         USED  AVAIL  REFER  MOUNTPOINT
+mypool       158K  9.63G  25.5K  /mypool
+mypool/opt    24K  9.63G    24K  /mypool/opt
+```
+
+При создании файловой системы также автоматически создаётся точка монтирования:
+
+```console
+[root@lvm vagrant]# zfs mount
+mypool                          /mypool
+mypool/opt                      /mypool/opt
+[root@lvm vagrant]# df -Th -x devtmpfs -x tmpfs
+Filesystem                      Type  Size  Used Avail Use% Mounted on
+/dev/mapper/VolGroup00-LogVol00 xfs    38G  769M   37G   3% /
+/dev/sda2                       xfs  1014M   63M  952M   7% /boot
+mypool                          zfs   9.7G     0  9.7G   0% /mypool
+mypool/opt                      zfs   9.7G     0  9.7G   0% /mypool/opt
+```
+
+Если бы каталог **/opt** был пуст, его можно было бы указать как точку монтирования для ZFS, однако в нашем случае в нём есть файлы, и система не даст это сделать. Вместо этого перенём всё содержимое каталога **/opt** в новую ФС:
+
+```console
+[root@lvm vagrant]# mv /opt/* /mypool/opt/
+[root@lvm vagrant]# ll /mypool/opt/
+total 5
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file1
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file10
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file2
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file3
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file4
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file5
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file6
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file7
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file8
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file9
+[root@lvm vagrant]# ll /opt
+total 0
+```
+
+Теперь мы можем указать **/opt** как новую точку монтирования для нашей ФС:
+
+```console
+[root@lvm vagrant]# zfs set mountpoint=/opt mypool/opt
+[root@lvm vagrant]# zfs mount
+mypool                          /mypool
+mypool/opt                      /opt
+[root@lvm vagrant]# df -Th -x devtmpfs -x tmpfs
+Filesystem                      Type  Size  Used Avail Use% Mounted on
+/dev/mapper/VolGroup00-LogVol00 xfs    38G  769M   37G   3% /
+/dev/sda2                       xfs  1014M   63M  952M   7% /boot
+mypool                          zfs   9.7G     0  9.7G   0% /mypool
+mypool/opt                      zfs   9.7G     0  9.7G   0% /opt
+[root@lvm vagrant]# ll /opt
+total 5
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file1
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file10
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file2
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file3
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file4
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file5
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file6
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file7
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file8
+-rw-r--r--. 1 root root 0 Dec 21 12:18 file9
+```
+
+#### Работа со снэпшотом
+
+Создадим снэпшот файловой системы, который назовём **snap**:
+
+```console
+[root@lvm vagrant]# zfs snapshot mypool/opt@snap
+[root@lvm vagrant]# zfs list -t snapshot
+NAME              USED  AVAIL  REFER  MOUNTPOINT
+mypool/opt@snap    13K      -    31K  -
+```
+
+Удалим несколько файлов из каталога **/opt**:
+
+```console
+[root@lvm vagrant]# rm -f /opt/file{5..10}
+[root@lvm vagrant]# ll /opt
+total 2
+-rw-r--r--. 1 root root 0 Dec 21 12:53 file1
+-rw-r--r--. 1 root root 0 Dec 21 12:53 file2
+-rw-r--r--. 1 root root 0 Dec 21 12:53 file3
+-rw-r--r--. 1 root root 0 Dec 21 12:53 file4
+```
+
+Произведём откат:
+
+```console
+[root@lvm vagrant]# zfs rollback mypool/opt@snap
+```
+
+Проверим:
+
+```console
+[root@lvm vagrant]# ll /opt
+total 5
+-rw-r--r--. 1 root root 0 Dec 21 12:53 file1
+-rw-r--r--. 1 root root 0 Dec 21 12:53 file10
+-rw-r--r--. 1 root root 0 Dec 21 12:53 file2
+-rw-r--r--. 1 root root 0 Dec 21 12:53 file3
+-rw-r--r--. 1 root root 0 Dec 21 12:53 file4
+-rw-r--r--. 1 root root 0 Dec 21 12:53 file5
+-rw-r--r--. 1 root root 0 Dec 21 12:53 file6
+-rw-r--r--. 1 root root 0 Dec 21 12:53 file7
+-rw-r--r--. 1 root root 0 Dec 21 12:53 file8
+-rw-r--r--. 1 root root 0 Dec 21 12:53 file9
+```
+
+#### Добавление и удаление устройств из пула
+
+Чтобы добавить устройво в пул, необходимо выполнить команду:
+
+```console
+[root@lvm vagrant]# zpool add mypool /dev/sdd
+```
+
+Проверим:
+
+```console
+[root@lvm vagrant]# zpool status
+  pool: mypool
+ state: ONLINE
+  scan: scrub repaired 0B in 0h0m with 0 errors on Sat Dec 21 13:18:33 2019
+config:
+
+        NAME        STATE     READ WRITE CKSUM
+        mypool      ONLINE       0     0     0
+          sdb       ONLINE       0     0     0
+          sdd       ONLINE       0     0     0
+        cache
+          sdc       ONLINE       0     0     0
+
+errors: No known data errors
+```
+
+Объём файловой системы увеличился:
+
+```console
+[root@lvm vagrant]# df -h -x tmpfs -x devtmpfs
+Filesystem                       Size  Used Avail Use% Mounted on
+/dev/mapper/VolGroup00-LogVol00   38G  770M   37G   3% /
+/dev/sda2                       1014M   63M  952M   7% /boot
+mypool                            11G     0   11G   0% /mypool
+mypool/opt                        11G     0   11G   0% /opt
+```
+
+Попробуем удалить диск из пула:
+```console
+[root@lvm vagrant]# zpool remove mypool /dev/sdd
+cannot remove /dev/sdd: only inactive hot spares, cache, or log devices can be removed
+```
+
+Ошибка: удалить можно только устройство для горячей замены, кэша или лога. Таким образом, ZFS не поддерживает уменьшение размера пула.
+
+Для того, чтобы высвободить диск, нужно сохранить все данные, хранящиеся в пуле (в нашем случае это только каталог **/opt**), удалить пул, создать его заново, не задействуя устройство **/dev/sdd**, создать внутри файловую систему с точкой монтирования **/opt** и вернуть в неё сохранённые файлы:
+
+```console
+[root@lvm vagrant]# mkdir /tmp/opt && mv /opt/* /tmp/opt
+[root@lvm vagrant]# zpool destroy mypool
+[root@lvm vagrant]# zpool list
+no pools available
+[root@lvm vagrant]# zpool create mypool /dev/sdb cache /dev/sdc
+[root@lvm vagrant]# zpool list
+NAME     SIZE  ALLOC   FREE  EXPANDSZ   FRAG    CAP  DEDUP  HEALTH  ALTROOT
+mypool  9.94G   190K  9.94G         -     0%     0%  1.00x  ONLINE  -
+[root@lvm vagrant]# zpool status
+  pool: mypool
+ state: ONLINE
+  scan: none requested
+config:
+
+        NAME        STATE     READ WRITE CKSUM
+        mypool      ONLINE       0     0     0
+          sdb       ONLINE       0     0     0
+        cache
+          sdc       ONLINE       0     0     0
+
+errors: No known data errors
+[root@lvm vagrant]# zfs create -o mountpoint=/opt mypool/opt
+[root@lvm vagrant]# zfs list
+NAME         USED  AVAIL  REFER  MOUNTPOINT
+mypool       168K  9.63G    24K  /mypool
+mypool/opt    24K  9.63G    24K  /opt
+[root@lvm vagrant]# mv /tmp/opt/* /opt
+[root@lvm vagrant]# ll /opt
+total 5
+-rw-r--r--. 1 root root 0 Dec 21 14:06 file1
+-rw-r--r--. 1 root root 0 Dec 21 14:06 file10
+-rw-r--r--. 1 root root 0 Dec 21 14:06 file2
+-rw-r--r--. 1 root root 0 Dec 21 14:06 file3
+-rw-r--r--. 1 root root 0 Dec 21 14:06 file4
+-rw-r--r--. 1 root root 0 Dec 21 14:06 file5
+-rw-r--r--. 1 root root 0 Dec 21 14:06 file6
+-rw-r--r--. 1 root root 0 Dec 21 14:06 file7
+-rw-r--r--. 1 root root 0 Dec 21 14:06 file8
+-rw-r--r--. 1 root root 0 Dec 21 14:06 file9
+[root@lvm vagrant]# df -h -x tmpfs -x devtmpfs
+Filesystem                       Size  Used Avail Use% Mounted on
+/dev/mapper/VolGroup00-LogVol00   38G  770M   37G   3% /
+/dev/sda2                       1014M   63M  952M   7% /boot
+mypool                           9.7G     0  9.7G   0% /mypool
+mypool/opt                       9.7G     0  9.7G   0% /opt
+```
+
+#### Создание зеркалированного пула
+
+Чтобы создать зеркалированный пул (по аналогии с RAID 1), необходимо использовать ключевое слово `mirror`:
+
+```console
+[root@lvm vagrant]# zpool create testpool mirror /dev/sdd /dev/sde
+```
+
+Проверим:
+
+```console
+[root@lvm vagrant]# zpool list
+NAME       SIZE  ALLOC   FREE  EXPANDSZ   FRAG    CAP  DEDUP  HEALTH  ALTROOT
+mypool    9.94G   181K  9.94G         -     0%     0%  1.00x  ONLINE  -
+testpool  1008M   273K  1008M         -     0%     0%  1.00x  ONLINE  -
+[root@lvm vagrant]# zpool status testpool
+  pool: testpool
+ state: ONLINE
+  scan: none requested
+config:
+
+        NAME        STATE     READ WRITE CKSUM
+        testpool    ONLINE       0     0     0
+          mirror-0  ONLINE       0     0     0
+            sdd     ONLINE       0     0     0
+            sde     ONLINE       0     0     0
+
+errors: No known data errors
+[root@lvm vagrant]# df -h -x tmpfs -x devtmpfs
+Filesystem                       Size  Used Avail Use% Mounted on
+/dev/mapper/VolGroup00-LogVol00   38G  770M   37G   3% /
+/dev/sda2                       1014M   63M  952M   7% /boot
+mypool                           9.7G     0  9.7G   0% /mypool
+mypool/opt                       9.7G     0  9.7G   0% /opt
+testpool                         880M     0  880M   0% /testpool
 ```
 
 <br/>
