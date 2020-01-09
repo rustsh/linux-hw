@@ -1,0 +1,11 @@
+[Unit]
+Description=Run watchlog script every 30 second
+
+[Timer]
+# Run service right after activate timer
+OnActiveSec=0
+# Run service after 30 seconds from previous activate
+OnUnitActiveSec=30
+
+[Install]
+WantedBy=multi-user.target
