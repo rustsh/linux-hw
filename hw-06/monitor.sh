@@ -47,7 +47,8 @@ then
     fi
 
     ### Выберем данные из интервала между последним временем выполнения скрипта и текущим временем
-    logInterval=$(cat "$inputFile" | awk -v lastTime=$lastTime -v timeNow=$timeNow '{sub(/\[/,"",$4); if ($4 >= lastTime && $4 < timeNow) print $0}')
+    logInterval=$(cat "$inputFile" | awk -v lastTime=$lastTime -v timeNow=$timeNow \
+                                     '{sub(/\[/,"",$4); if ($4 >= lastTime && $4 < timeNow) print $0}')
 
     ### Выводим временной диапазон
     echo "Данные за промежуток между $lastTime и $timeNow" > $outputFile
