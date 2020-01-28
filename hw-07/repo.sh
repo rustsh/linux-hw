@@ -10,7 +10,7 @@ echo '==================================='
 mkdir /usr/share/nginx/html/repo
 
 # Копируем туда собранный RPM и RPM для установки репозитория Percona-Server
-cp /root/rpmbuild/RPMS/x86_64/nginx-1.14.1-1.el7_4.ngx.x86_64.rpm /usr/share/nginx/html/repo/ 2> error.log
+cp /root/rpmbuild/RPMS/x86_64/nginx-1.14.1-1.el7_4.ngx.x86_64.rpm /usr/share/nginx/html/repo/
 wget http://www.percona.com/downloads/percona-release/redhat/0.1-6/percona-release-0.1-6.noarch.rpm -O /usr/share/nginx/html/repo/percona-release-0.1-6.noarch.rpm
 
 # Инициализируем репозиторий
