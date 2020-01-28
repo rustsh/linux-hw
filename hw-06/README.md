@@ -93,8 +93,7 @@
 
     ```bash
     echo "Топ $countFrom IP-адресов:" >> $outputFile
-    ipList=$(echo "$logInterval")
-    topList "$ipList" $countFrom >> $outputFile
+    topList "$logInterval" $countFrom >> $outputFile
     echo '' >> $outputFile
     ```
 

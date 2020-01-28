@@ -56,8 +56,7 @@ then
 
     ### Выводим IP-адреса с наибольшим количеством запросов
     echo "Топ $countFrom IP-адресов:" >> $outputFile
-    ipList=$(echo "$logInterval")
-    topList "$ipList" $countFrom >> $outputFile
+    topList "$logInterval" $countFrom >> $outputFile
     echo '' >> $outputFile
 
     ### Выводим запрашиваемые адреса с наибольшим количеством запросов
