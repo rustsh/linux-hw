@@ -101,7 +101,7 @@ end
     mkdir /usr/share/nginx/html/repo
     ```
 
-2. Копирует в этот каталог два RPM-пакета: пакет Nginx, собранный при запуске предыдущего скрипта, и пакет для установки репозитория Percona-Server, предварительно загрузив его из сети:
+2. Копирует в этот каталог два RPM-пакета: пакет Nginx, собранный при выполнении предыдущего скрипта, и пакет для установки репозитория Percona-Server (предварительно загрузив его из сети):
 
     ```bash
     cp /root/rpmbuild/RPMS/x86_64/nginx-1.14.1-1.el7_4.ngx.x86_64.rpm /usr/share/nginx/html/repo/
@@ -179,7 +179,7 @@ end
 
 2. Проверим список пакетов в созданном репозитории:
 
-    ```concole
+    ```console
     [vagrant@localhost ~]$ yum list | grep otus
     percona-release.noarch                      0.1-6                      otus
     ```
