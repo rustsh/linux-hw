@@ -1,0 +1,25 @@
+version: '3'
+services:
+  nginx:
+    image: rustsh/otus-nginx:1.0
+    container_name: otus-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./info.php:/var/www/html/info.php
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php-fpm
+    networks:
+      - nginx-php
+  
+  php-fpm:
+    image: rustsh/otus-php-fpm:1.0
+    container_name: otus-php-fpm
+    volumes:
+      - ./info.php:/var/www/html/info.php
+    networks:
+      - nginx-php
+
+networks:
+  nginx-php:
