@@ -35,7 +35,7 @@
           name: nginx
           state: started
           enabled: yes
-      - name: copy config nginx
+      - name: Сopy Nginx config
         template:
           src: nginx.conf.j2
           dest: /etc/nginx/nginx.conf
@@ -67,7 +67,7 @@
           http_port: 8080
     ```
 
-3. Создан [Vagrantfile](Vagrantfile), в котором плейбук [install_nginx.yml](provisioning/install_nginx.yml) используется для предварительной настройки (provisioning) виртуальной машины:
+3. Создан [Vagrantfile](Vagrantfile), в котором для предварительной настройки виртуальной машины (provisioning) определён Ansible-плейбук [install_nginx.yml](provisioning/install_nginx.yml):
 
     ```ruby
     Vagrant.configure("2") do |config|
