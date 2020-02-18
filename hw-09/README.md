@@ -43,14 +43,14 @@
      ```nginx
      server {
          listen 80;
- 
+
          root /var/www/html;
          index info.php;
- 
+
          location / {
              try_files $uri $uri/ /info.php?$query_string;
          }
- 
+
          location ~ \.php$ {
              try_files $uri =404;
              fastcgi_split_path_info ^(.+\.php)(/.+)$;
