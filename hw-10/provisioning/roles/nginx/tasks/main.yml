@@ -1,0 +1,21 @@
+---
+# tasks file for nginx
+- name: Install EPEL repo and Nginx
+  yum:
+    name: "{{ item }}"
+    state: latest
+  loop:
+    - epel-release
+    - nginx
+
+- name: Start and enable Nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: copy config nginx
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+  notify: Restart Nginx

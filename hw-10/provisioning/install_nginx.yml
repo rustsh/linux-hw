@@ -1,0 +1,8 @@
+---
+- hosts: all
+  become: true
+  gather_facts: false
+  roles:
+  - role: nginx
+    vars:
+      http_port: 8080
