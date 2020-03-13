@@ -21,7 +21,7 @@
 - name: Init Borg repo
   become_user: "{{ borg_user }}"
   expect:
-    command: borg init -e repokey borg@server:{{ backup_path }}
+    command: borg init -e repokey {{ borg_user }}@{{ dest_host }}:{{ backup_path }}
     responses:
       "Enter": "{{ borg_passphrase }}"
       "Do you want": n
