@@ -1,0 +1,43 @@
+---
+- name: Create directory for backup on server
+  become_user: "{{ borg_user }}"
+  file:
+    path: "{{ backup_path }}"
+    state: directory
+  delegate_to: "{{ dest_host }}"
+
+- name: Copy script for install pip
+  get_url:
+    url: https://bootstrap.pypa.io/get-pip.py
+    dest: /tmp
+
+- name: Install pip
+  command: python /tmp/get-pip.py
+
+- name: Install pexpect for use expect module
+  pip:
+    name: pexpect
+
+- name: Init Borg repo
+  become_user: "{{ borg_user }}"
+  expect:
+    command: borg init -e repokey borg@server:{{ backup_path }}
+    responses:
+      "Enter": "{{ borg_passphrase }}"
+      "Do you want": n
+
+- name: Copy backup script
+  template:
+    src: borg-etc.j2
+    dest: /home/{{ borg_user }}/borg-etc.sh
+    owner: "{{ borg_user }}"
+    group: "{{ borg_user }}"
+    mode: '0700'
+
+- name: Set cron to create backup every 15 minutes
+  become_user: "{{ borg_user }}"
+  cron:
+    name: "Create backup with Borg"
+    minute: "*/15"
+    job: "/home/{{ borg_user }}/borg-etc.sh > /dev/null 2>&1"
+  

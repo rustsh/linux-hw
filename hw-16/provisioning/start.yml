@@ -1,0 +1,19 @@
+---
+- name: Install Borg and create user for it on every machine
+  hosts: all
+  vars:
+    borg_version: 1.1.11
+  roles:
+    - install_borg
+      
+
+- name: Config SSH and run Borg
+  hosts: client
+  vars:
+    source_host: client
+    dest_host: server
+    dest_host_ip: 10.0.0.10
+    borg_passphrase: qwerty123
+  roles:
+    - deploy_key
+    - run_borg

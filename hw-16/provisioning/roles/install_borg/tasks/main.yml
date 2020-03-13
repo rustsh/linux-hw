@@ -1,0 +1,13 @@
+---
+- name: Create user for Borg
+  user:
+    name: "{{ borg_user }}"
+    generate_ssh_key: yes
+
+- name: Download and install Borg
+  get_url:
+    url: https://github.com/borgbackup/borg/releases/download/{{ borg_version }}/borg-linux64
+    dest: /bin/borg
+    owner: root
+    group: root
+    mode: '0755'

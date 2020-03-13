@@ -1,0 +1,17 @@
+---
+- name: Read public key on {{ source_host }}
+  command: "cat /home/{{ borg_user }}/.ssh/id_rsa.pub"
+  register: pub_key
+
+- name: Add deploy key to authorized keys on {{ dest_host }}
+  authorized_key:
+    user: "{{ borg_user }}"
+    key: "{{ pub_key.stdout }}"
+  delegate_to: "{{ dest_host }}"
+
+- name: Create SSH config
+  template:
+    src: config.j2
+    dest: /home/{{ borg_user }}/.ssh/config
+    owner: "{{ borg_user }}"
+    group: "{{ borg_user }}"
