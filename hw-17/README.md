@@ -107,7 +107,18 @@ $ tree -L 3
 ```
 
 1. Проверяется, установлен ли на сервер rsyslog.
-2. В [файле конфигурации rsyslog](provisioning/roles/rsyslog/templates/server-rsyslog.conf.j2) включается прослушивание порта 514 по протоколам UDP и TCP.
+2. В [файле конфигурации rsyslog](provisioning/roles/rsyslog/templates/server-rsyslog.conf.j2) включается прослушивание порта 514 по протоколам UDP и TCP:
+
+    ```
+    # Provides UDP syslog reception
+    $ModLoad imudp
+    $UDPServerRun 514
+
+    # Provides TCP syslog reception
+    $ModLoad imtcp
+    $InputTCPServerRun 514
+    ```
+
 3. В файл конфигурации rsyslog добавляются правила для сбора и обработки логов с удалённого сервера:
 
     ```
@@ -151,36 +162,36 @@ $ tree -L 3
 #### Проверка передачи логов через rsyslog
 
 1. Зайти на машину log, выполнив команду `vagrant ssh log`.
-2. Убедиться, что в каталоге **/var/log** создалась директория **10.0.0.10**:
+2. Убедиться, что в каталоге **/var/log** создана директория **10.0.0.10**:
 
-```console
-[vagrant@localhost ~]$ ls -l /var/log
-total 144
-drwx------. 2 root   root      142 Mar 15 21:38 10.0.0.10
-...
-```
+    ```console
+    [vagrant@localhost ~]$ ls -l /var/log
+    total 144
+    drwx------. 2 root   root      142 Mar 15 21:38 10.0.0.10
+    ...
+    ```
 
-3. Убедиться, что в этой директории создались файлы с логами различных программ, а также проверить содержимое этих файлов:
+3. Убедиться, что в этой директории созданы файлы с логами различных программ, а также проверить содержимое этих файлов:
 
-```console
-[vagrant@localhost ~]$ sudo ls -l /var/log/10.0.0.10/
-total 36
--rw-------. 1 root root   72 Mar 15 21:41 chronyd.log
--rw-------. 1 root root 4905 Mar 15 21:41 filebeat.log
--rw-------. 1 root root  231 Mar 15 21:38 polkitd.log
--rw-------. 1 root root  908 Mar 15 21:38 rsyslogd.log
--rw-------. 1 root root 1065 Mar 15 21:40 sshd.log
--rw-------. 1 root root  627 Mar 15 21:41 sudo.log
--rw-------. 1 root root  702 Mar 15 21:40 systemd.log
--rw-------. 1 root root  329 Mar 15 21:40 systemd-logind.log
+    ```console
+    [vagrant@localhost ~]$ sudo ls -l /var/log/10.0.0.10/
+    total 36
+    -rw-------. 1 root root   72 Mar 15 21:41 chronyd.log
+    -rw-------. 1 root root 4905 Mar 15 21:41 filebeat.log
+    -rw-------. 1 root root  231 Mar 15 21:38 polkitd.log
+    -rw-------. 1 root root  908 Mar 15 21:38 rsyslogd.log
+    -rw-------. 1 root root 1065 Mar 15 21:40 sshd.log
+    -rw-------. 1 root root  627 Mar 15 21:41 sudo.log
+    -rw-------. 1 root root  702 Mar 15 21:40 systemd.log
+    -rw-------. 1 root root  329 Mar 15 21:40 systemd-logind.log
 
-[vagrant@localhost ~]$ sudo tail /var/log/10.0.0.10/systemd-logind.log
-Mar 15 21:38:11 localhost systemd-logind: Removed session 2.
-Mar 15 21:39:11 localhost systemd-logind: Removed session 4.
-Mar 15 21:39:26 localhost systemd-logind: New session 5 of user vagrant.
-Mar 15 21:40:25 localhost systemd-logind: Removed session 5.
-Mar 15 21:40:45 localhost systemd-logind: New session 6 of user vagrant.
-```
+    [vagrant@localhost ~]$ sudo tail /var/log/10.0.0.10/systemd-logind.log
+    Mar 15 21:38:11 localhost systemd-logind: Removed session 2.
+    Mar 15 21:39:11 localhost systemd-logind: Removed session 4.
+    Mar 15 21:39:26 localhost systemd-logind: New session 5 of user vagrant.
+    Mar 15 21:40:25 localhost systemd-logind: Removed session 5.
+    Mar 15 21:40:45 localhost systemd-logind: New session 6 of user vagrant.
+    ```
 
 #### Проверка передачи логов Nginx в ELK
 
@@ -189,7 +200,7 @@ Mar 15 21:40:45 localhost systemd-logind: New session 6 of user vagrant.
 3. На странице с настройками Kibana создать шаблон `nginx*`.
 4. Перейти на вкладку Discover и убедиться, что логи Nginx отображаются:
 
-  ![](images/kibana.png)
+    ![](images/kibana.png)
 
 <br/>
 
