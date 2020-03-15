@@ -40,4 +40,3 @@
     name: "Create backup with Borg"
     minute: "*/15"
     job: "/home/{{ borg_user }}/borg-etc.sh > /dev/null 2>&1"
-  
