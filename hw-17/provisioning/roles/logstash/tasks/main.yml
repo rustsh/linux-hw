@@ -1,0 +1,23 @@
+---
+- name: Install Logstash {{ logstash_version }}
+  yum:
+    name: logstash-{{ logstash_version }}
+    state: present
+    update_cache: yes
+
+# Костыль — сам logstash при установке почему-то не создаёт Unit-файла
+- name: create systemd unit for Logstash
+  shell: /usr/share/logstash/bin/system-install /etc/logstash/startup.options systemd
+
+- name: Copy Logstash config files
+  copy:
+    src: "{{ role_path }}/files/"
+    dest: /etc/logstash/conf.d/
+  notify:
+    - restart logstash
+
+- name: Start Logstash
+  systemd:
+    name: logstash
+    state: started
+    enabled: yes

@@ -1,0 +1,14 @@
+---
+- name: Provision ELK server
+  hosts: elk
+  vars:
+    nginx_version: 1.16.1
+    es_version: 7.6.1
+    kibana_version: "{{ es_version }}"
+    logstash_version: "{{ es_version }}"
+  roles:
+    - java
+    - elastic.elasticsearch
+    - kibana
+    - nginx
+    - logstash

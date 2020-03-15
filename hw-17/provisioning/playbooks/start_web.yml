@@ -1,0 +1,13 @@
+---
+- name: Provision web server
+  hosts: web
+  gather_facts: no
+  vars:
+    nginx_version: 1.16.1
+    filebeat_version: 7.6.1
+    logstash_host: 10.0.0.30
+    log_host: 10.0.0.20
+  roles:
+    - nginx
+    - filebeat
+    - rsyslog

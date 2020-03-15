@@ -1,0 +1,8 @@
+---
+- name: Provision log server
+  hosts: log
+  gather_facts: no
+  vars:
+    web_host: 10.0.0.10
+  roles:
+    - rsyslog

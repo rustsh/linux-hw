@@ -1,0 +1,32 @@
+---
+- name: Add Nginx repo to YUM
+  yum_repository:
+    name: nginx
+    description: nginx repo
+    baseurl: http://nginx.org/packages/centos/7/$basearch/
+    gpgcheck: no
+    enabled: yes
+
+- name: Install Nginx {{ nginx_version }}
+  yum:
+    name: nginx-{{ nginx_version }}
+    state: present
+    update_cache: yes
+
+- name: Start Nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Manage SELinux
+  include: manage_selinux.yml
+  when: inventory_hostname == "elk"
+
+- name: Set default.conf for Kibana
+  template:
+    src: default.conf.j2
+    dest: /etc/nginx/conf.d/default.conf
+  notify:
+    - restart nginx
+  when: inventory_hostname == "elk"

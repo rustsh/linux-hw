@@ -1,0 +1,24 @@
+---
+- name: Add Elasticsearch repo
+  template:
+    src: elasticsearch.repo
+    dest: /etc/yum.repos.d/elasticsearch-{{ es_repo_name }}.repo
+
+- name: Install Filebeat {{ filebeat_version }}
+  yum:
+    name: filebeat-{{ filebeat_version }}
+    state: present
+    update_cache: yes
+
+- name: Copy Filebeat config
+  template:
+    src: filebeat.yml.j2
+    dest: /etc/filebeat/filebeat.yml
+  notify:
+   - restart filebeat
+
+- name: Start Filebeat
+  systemd:
+    name: filebeat
+    state: started
+    enabled: yes

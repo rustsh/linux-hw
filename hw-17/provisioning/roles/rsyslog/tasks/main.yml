@@ -1,0 +1,28 @@
+---
+- name: Install rsyslog
+  yum:
+    name: rsyslog
+    state: present
+    update_cache: yes
+
+- name: Config rsyslog on log server
+  template:
+    src: server-rsyslog.conf.j2
+    dest: /etc/rsyslog.conf
+  notify:
+    - restart rsyslog
+  when: inventory_hostname == "log"
+
+- name: Config rsyslog on web server
+  template:
+    src: all.conf.j2
+    dest: /etc/rsyslog.d/all.conf
+  notify:
+    - restart rsyslog
+  when: inventory_hostname != "log"
+
+- name: Start rsyslog
+  systemd:
+    name: rsyslog
+    state: started
+    enabled: yes
