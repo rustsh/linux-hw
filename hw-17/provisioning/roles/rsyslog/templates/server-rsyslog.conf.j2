@@ -45,7 +45,7 @@ $IMJournalStateFile imjournal.state
 
 #### RULES ####
 
-$template RemoteLogs,"/var/log/{{ web_host }}/%PROGRAMNAME%.log"
+$template RemoteLogs,"/var/log/%HOSTNAME%/%PROGRAMNAME%.log"
 *.* ?RemoteLogs
 & ~
 

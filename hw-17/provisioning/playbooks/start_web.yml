@@ -4,8 +4,8 @@
   gather_facts: no
   vars:
     nginx_version: 1.16.1
-    log_host: 10.0.0.20
     filebeat_version: 7.6.1
+    log_host: 10.0.0.20
     logstash_host: 10.0.0.30
   roles:
     - nginx
