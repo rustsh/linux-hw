@@ -63,7 +63,7 @@ $ tree -L 3
         - admin_password: adminpassword
 ```
 
-1. Включается и конфигурируется файрвол: добавляются нужные для работы сервисы (ntp, http, https, ldap, ldaps, kerberos, kpasswd, dns, freeipa-ldap, freeipa-ldaps), после чего он перезапускается.
+1. Включается и конфигурируется файрвол: добавляются нужные для работы сервисы (dns, freeipa-ldap, freeipa-ldaps), после чего он перезапускается.
 2. При помощи утилиты authconfig в PAM добавляется правило для создания домашнего каталога при подключении по SSH:
 
     ```console
@@ -165,7 +165,7 @@ $ tree -L 3
 
     ```console
     [root@ipa-server ~]# firewall-cmd --list-services 
-    ssh dhcpv6-client ntp http https ldap ldaps kerberos kpasswd dns freeipa-ldap freeipa-ldaps
+    ssh dhcpv6-client dns freeipa-ldap freeipa-ldaps
     ```
 
 #### Проверка настройки хостов

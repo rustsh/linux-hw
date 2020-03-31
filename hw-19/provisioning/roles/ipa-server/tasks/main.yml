@@ -11,13 +11,6 @@
     permanent: yes
     state: enabled
   loop:
-    - ntp
-    - http
-    - https
-    - ldap
-    - ldaps
-    - kerberos
-    - kpasswd
     - dns
     - freeipa-ldap
     - freeipa-ldaps
