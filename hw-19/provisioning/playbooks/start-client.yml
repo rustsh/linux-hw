@@ -1,0 +1,14 @@
+---
+- name: Provision IPA client
+  hosts: client
+  gather_facts: yes
+  vars:
+    - admin_password: adminpassword
+    - server_ip: 192.168.33.10
+  roles:
+    - role: ipa-client
+    - role: ipa-user-add
+      vars:
+        - user_login: otus
+        - user_name: John
+        - user_surname: Doe

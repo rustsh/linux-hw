@@ -1,0 +1,30 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "centos/7"
+
+  config.vm.define "server" do |server|
+    server.vm.hostname = "ipa-server.otus.lan"
+    server.vm.network "private_network", ip: "192.168.33.10"
+    server.vm.provider "virtualbox" do |vb|
+      vb.memory = 2048
+      vb.cpus = 2
+    end
+    server.vm.provision "ansible" do |ansible|
+      ansible.playbook = "provisioning/playbooks/start-server.yml"
+    end
+  end
+
+  config.vm.define "client" do |client|
+    client.vm.hostname = "client.otus.lan"
+    client.vm.network "private_network", ip: "192.168.33.20"
+    client.vm.provider "virtualbox" do |vb|
+      vb.memory = 1024
+    end
+    client.vm.provision "ansible" do |ansible|
+      ansible.playbook = "provisioning/playbooks/start-client.yml"
+    end
+  end
+
+end

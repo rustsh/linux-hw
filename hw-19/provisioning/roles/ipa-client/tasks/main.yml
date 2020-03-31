@@ -1,0 +1,27 @@
+---
+- name: Start firewalld on client
+  systemd:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: Enable mkhomedir via authconfig on client
+  command: authconfig --enablemkhomedir --update
+
+- name: Update /etc/resolv.conf on client
+  template:
+    src: resolv.conf.j2
+    dest: /etc/resolv.conf
+
+- name: Install FreeIPA on client
+  yum:
+    name: ipa-client
+    state: latest
+    update_cache: yes
+
+- name: Install IPA client
+  command: >
+    ipa-client-install --unattended
+    --principal=admin
+    --password={{ admin_password }}
+    --mkhomedir

@@ -1,0 +1,16 @@
+---
+- name: Create user
+  user:
+    name: "{{ user_login }}"
+    generate_ssh_key: yes
+
+- name: Get Kerberos ticket
+  shell: echo -n {{ admin_password }} | kinit admin
+
+- name: Add user {{ user_login }} to domain
+  shell: >
+    ipa user-add {{ user_login }}
+    --first={{ user_name }}
+    --last={{ user_surname }}
+    --shell=/bin/bash
+    --sshpubkey="$(cat /home/{{ user_login }}/.ssh/id_rsa.pub)"

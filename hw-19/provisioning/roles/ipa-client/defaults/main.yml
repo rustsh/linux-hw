@@ -1,0 +1,4 @@
+---
+domain_name: "{{ ansible_facts.domain }}"
+server_ip: 192.168.33.10
+admin_password: adminpassword

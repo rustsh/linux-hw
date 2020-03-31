@@ -1,0 +1,56 @@
+---
+- name: Start firewalld on server
+  systemd:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: Config firewalld for IPA on server
+  firewalld:
+    service: "{{ item }}"
+    permanent: yes
+    state: enabled
+  loop:
+    - ntp
+    - http
+    - https
+    - ldap
+    - ldaps
+    - kerberos
+    - kpasswd
+    - dns
+    - freeipa-ldap
+    - freeipa-ldaps
+  notify:
+    - Reload firewalld
+
+- name: Enable mkhomedir via authconfig on server
+  command: authconfig --enablemkhomedir --update
+
+- name: Update /etc/hosts on server
+  template:
+    src: hosts.j2
+    dest: /etc/hosts
+
+- name: Install FreeIPA on server
+  yum:
+    name: "{{ item }}"
+    state: latest
+    update_cache: yes
+  loop:
+    - nss
+    - ipa-server
+    - ipa-server-dns
+
+- name: Install IPA server
+  command: >
+    ipa-server-install --unattended
+    --subject-base="O={{ realm_name }} {{ ansible_date_time.epoch }}"
+    --hostname={{ server_fqdn }}
+    --realm={{ realm_name }}
+    --domain={{ domain_name }}
+    --ds-password={{ dm_password }}
+    --admin-password={{ admin_password }}
+    --setup-dns
+    --no-forwarders
+    --no-reverse

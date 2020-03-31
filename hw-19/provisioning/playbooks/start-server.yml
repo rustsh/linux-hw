@@ -1,0 +1,9 @@
+---
+- name: Provision IPA server
+  hosts: server
+  gather_facts: yes
+  roles:
+    - role: ipa-server
+      vars:
+        - dm_password: dmpassword
+        - admin_password: adminpassword
