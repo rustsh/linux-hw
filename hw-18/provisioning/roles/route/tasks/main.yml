@@ -21,9 +21,20 @@
   include: default_route.yml
   when: inventory_hostname != "inetRouter"
 
-- name: Set default gateways on host
-  include: gateway.yml
-  when: inventory_hostname != "inetRouter"
+- name: Set default gateway on eth1
+  vars:
+    host: "{{inventory_hostname}}"
+  ini_file:
+    path: /etc/sysconfig/network-scripts/ifcfg-eth1
+    section: null
+    option: GATEWAY
+    value: "{{ vars[host].eth1.gateway }}"
+    no_extra_spaces: yes
+  when:
+    - inventory_hostname != "inetRouter"
+    - vars[host].eth1.gateway is defined
+  notify:
+    - Restart network
 
 - name: Copy route files
   template:

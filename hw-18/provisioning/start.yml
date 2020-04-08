@@ -1,6 +1,5 @@
 ---
 - name: Config routing
   hosts: all
-  gather_facts: yes
   roles:
     - route
