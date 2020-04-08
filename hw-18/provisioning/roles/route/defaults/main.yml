@@ -8,6 +8,22 @@ centralServer:
   eth1:
     gateway: 192.168.0.1
 
+office1Router:
+  eth1:
+    gateway: 192.168.254.1
+
+office1Server:
+  eth1:
+    gateway: 192.168.2.1
+
+office2Router:
+  eth1:
+    gateway: 192.168.254.1
+
+office2Server:
+  eth1:
+    gateway: 192.168.1.101
+
 # networks
 router_www_net:
   network: 192.168.255.0

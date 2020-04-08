@@ -27,16 +27,15 @@
 
 - name: Copy route files
   template:
-    src: "{{ inventory_hostname }}/route-eth1.j2"
-    dest: /etc/sysconfig/network-scripts/route-eth1
-  when: (inventory_hostname == "inetRouter") or
-        (inventory_hostname == "centralRouter") or
-        (inventory_hostname == "centralServer")
+    src: "{{ item }}"
+    dest: /etc/sysconfig/network-scripts/{{ item | basename | regex_replace('\.j2$', '') }}
+  with_fileglob:
+    - "{{ role_path }}/templates/{{ inventory_hostname }}/*.j2"
   notify:
     - Restart network
 
-# Костыль — по какой-то причине маршруты из route-eth1 не подтягиваются
-# после перезапуска сервиса network в хендлере
+# Костыль — по какой-то причине маршруты из route-eth* не подтягиваются
+# после перезапуска сервиса network в хэндлере
 - name: Force to restart network
   systemd:
     name: network
