@@ -1,0 +1,5 @@
+default via {{ dir_centr_net.gateway }}
+{{ router_www_net.network }}/{{ router_www_net.prefix }} via {{ dir_centr_net.gateway }}
+{{ router_lan_net.network }}/{{ router_lan_net.prefix }} via {{ dir_centr_net.gateway }}
+{{ dev_office1_net.network }}/{{ dev_office1_net.prefix }} via {{ dir_centr_net.gateway }}
+{{ dev_office2_net.network }}/{{ dev_office2_net.prefix }} via {{ dir_centr_net.gateway }}

@@ -1,0 +1,43 @@
+---
+- name: Config iptables on inetRouter
+  iptables:
+    table: nat
+    action: append
+    chain: POSTROUTING
+    destination: '! 192.168.0.0/16'
+    out_interface: eth0
+    jump: MASQUERADE
+  when: inventory_hostname == "inetRouter"
+
+- name: Enable forwading on routers
+  copy:
+    src: forwarding.conf
+    dest: /etc/sysctl.d/forwarding.conf
+  when: "'Router' in inventory_hostname"
+  notify:
+    - Restart network
+
+- name: Config default route
+  include: default_route.yml
+  when: inventory_hostname != "inetRouter"
+
+- name: Set default gateways on host
+  include: gateway.yml
+  when: inventory_hostname != "inetRouter"
+
+- name: Copy route files
+  template:
+    src: "{{ inventory_hostname }}/route-eth1.j2"
+    dest: /etc/sysconfig/network-scripts/route-eth1
+  when: (inventory_hostname == "inetRouter") or
+        (inventory_hostname == "centralRouter") or
+        (inventory_hostname == "centralServer")
+  notify:
+    - Restart network
+
+# Костыль — по какой-то причине маршруты из route-eth1 не подтягиваются
+# после перезапуска сервиса network в хендлере
+- name: Force to restart network
+  systemd:
+    name: network
+    state: restarted

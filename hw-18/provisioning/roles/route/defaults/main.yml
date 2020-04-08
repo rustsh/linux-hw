@@ -1,0 +1,94 @@
+---
+# host gateways
+centralRouter:
+  eth1:
+    gateway: 192.168.255.1
+
+centralServer:
+  eth1:
+    gateway: 192.168.0.1
+
+# networks
+router_www_net:
+  network: 192.168.255.0
+  mask: 255.255.255.252
+  prefix: 30
+  gateway: 192.168.255.1
+  description: Network to connect centralRouter and inetRouter
+
+router_lan_net:
+  network: 192.168.254.0
+  mask: 255.255.255.240
+  prefix: 28
+  gateway: 192.168.254.1
+  description: Network to connect inner routers
+
+dir_centr_net:
+  network: 192.168.0.0
+  mask: 255.255.255.240
+  prefix: 28
+  gateway: 192.168.0.1
+  description: Directors in Central network
+
+hw_centr_net:
+  network: 192.168.0.32
+  mask: 255.255.255.240
+  prefix: 28
+  gateway: 192.168.0.33
+  description: Office hardware in Central network
+
+mgt_centr_net:
+  network: 192.168.0.64
+  mask: 255.255.255.192
+  prefix: 26
+  gateway: 192.168.0.65
+  description: Wi_Fi in Central network
+
+dev_office1_net:
+  network: 192.168.2.0
+  mask: 255.255.255.192
+  prefix: 26
+  gateway: 192.168.2.1
+  description: Developers in Office1 network
+
+testsrv_office1_net:
+  network: 192.168.2.64
+  mask: 255.255.255.192
+  prefix: 26
+  gateway: 192.168.2.65
+  description: Test servers in Office1 network
+
+manag_office1_net:
+  network: 192.168.2.128
+  mask: 255.255.255.192
+  prefix: 26
+  gateway: 192.168.2.129
+  description: Managers in Office1 network
+
+hw_office1_net:
+  network: 192.168.2.192
+  mask: 255.255.255.192
+  prefix: 26
+  gateway: 192.168.2.193
+  description: Office hardware in Office1 network
+
+dev_office2_net:
+  network: 192.168.1.0
+  mask: 255.255.255.128
+  prefix: 25
+  gateway: 192.168.1.101
+  description: Developers in Office2 network
+
+testsrv_office2_net:
+  network: 192.168.1.128
+  mask: 255.255.255.192
+  prefix: 26
+  gateway: 192.168.1.129
+  description: Test servers in Office2 network
+
+hw_office2_net:
+  network: 192.168.1.192
+  mask: 255.255.255.192
+  prefix: 26
+  gateway: 192.168.1.193
+  description: Office hardware in Office1 network
