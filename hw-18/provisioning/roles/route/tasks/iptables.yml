@@ -1,0 +1,26 @@
+---
+- name: Install iptables-services
+  yum:
+    name: iptables-services
+    state: present
+
+- name: Start and enable iptables service
+  systemd:
+    name: iptables
+    state: started
+    enabled: yes
+
+- name: Create iptables rule for masquerading
+  iptables:
+    table: nat
+    action: append
+    chain: POSTROUTING
+    destination: '! 192.168.0.0/16'
+    out_interface: eth0
+    jump: MASQUERADE
+  notify:
+    - Save iptables rule
+
+- name: iptables flush filter
+  iptables:
+    flush: yes

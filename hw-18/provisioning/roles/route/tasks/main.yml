@@ -5,13 +5,7 @@
     state: present
 
 - name: Config iptables on inetRouter
-  iptables:
-    table: nat
-    action: append
-    chain: POSTROUTING
-    destination: '! 192.168.0.0/16'
-    out_interface: eth0
-    jump: MASQUERADE
+  include: iptables.yml
   when: inventory_hostname == "inetRouter"
 
 - name: Copy /etc/sysconfig/network

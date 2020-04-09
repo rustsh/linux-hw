@@ -3,3 +3,8 @@
   systemd:
     name: network
     state: restarted
+
+- name: Save iptables rule
+  command:
+    cmd: service iptables save
+    warn: no
