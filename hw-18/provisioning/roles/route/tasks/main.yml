@@ -52,11 +52,6 @@
   notify:
     - Restart network
 
-# После поднятия хоста сервис network находится в статусе failed c ошибкой "Connection activation
-# failed: No suitable device found for this connection" для интерфейса eth0 из-за NetworkManager.
-# После рестарта сервиса, вызванного в хэндлере, ошибка пропадает, но изменения из файлов route-eth*
-# не подтягиваются. Чтобы они вступили в силу, рестартовать должен уже запущенный сервис.
-# Для этого и нужен следующий таск
 - name: Start network service
   systemd:
     name: network
