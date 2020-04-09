@@ -1,4 +1,9 @@
 ---
+- name: Install tcpdump
+  yum:
+    name: tcpdump
+    state: present
+
 - name: Config iptables on inetRouter
   iptables:
     table: nat
