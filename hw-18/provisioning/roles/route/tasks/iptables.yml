@@ -24,3 +24,5 @@
 - name: iptables flush filter
   iptables:
     flush: yes
+  notify:
+    - Save iptables rule
