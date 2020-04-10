@@ -94,7 +94,8 @@ route/
 ├── tasks
 │   ├── default_route.yml
 │   ├── iptables.yml
-│   └── main.yml
+│   ├── main.yml
+│   └── no_nm.yml
 └── templates
     ├── centralRouter
     │   ├── route-eth1.j2
