@@ -9,7 +9,7 @@
   notify:
     - Restart network
 
-- name: Check if default router exists
+- name: Check if default route exists
   command: ip route
   register: route_output
 
