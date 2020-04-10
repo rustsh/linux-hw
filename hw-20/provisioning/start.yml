@@ -1,0 +1,5 @@
+---
+- name: Config routing
+  hosts: all
+  roles:
+    - route

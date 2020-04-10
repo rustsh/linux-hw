@@ -1,0 +1,62 @@
+---
+- name: Install tcpdump
+  yum:
+    name: tcpdump
+    state: present
+
+- include: iptables.yml
+  when: inventory_hostname == "inetRouter"
+
+- name: Copy /etc/sysconfig/network
+  template:
+    src: network.j2
+    dest: /etc/sysconfig/network
+  notify:
+    - Restart network
+
+- name: Enable forwading on routers
+  copy:
+    src: forwarding.conf
+    dest: /etc/sysctl.d/forwarding.conf
+  when: "'Router' in inventory_hostname"
+  notify:
+    - Restart network
+
+- include: default_route.yml
+  when: inventory_hostname != "inetRouter"
+
+- name: Set default gateway on eth1
+  vars:
+    host: "{{inventory_hostname}}"
+  ini_file:
+    path: /etc/sysconfig/network-scripts/ifcfg-eth1
+    section: null
+    option: GATEWAY
+    value: "{{ vars[host].eth1.gateway }}"
+    no_extra_spaces: yes
+  when:
+    - inventory_hostname != "inetRouter"
+    - vars[host].eth1.gateway is defined
+  notify:
+    - Restart network
+
+- name: Copy route files
+  template:
+    src: "{{ item }}"
+    dest: /etc/sysconfig/network-scripts/{{ item | basename | regex_replace('\.j2$', '') }}
+  with_fileglob:
+    - "{{ role_path }}/templates/{{ inventory_hostname }}/*.j2"
+  notify:
+    - Restart network
+
+- name: Start network service
+  systemd:
+    name: network
+    state: started
+    enabled: yes
+
+- name: Stop and disable NetworkManager
+  systemd:
+    name: NetworkManager
+    state: stopped
+    enabled: no

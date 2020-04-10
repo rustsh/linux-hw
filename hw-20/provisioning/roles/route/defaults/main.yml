@@ -1,0 +1,34 @@
+---
+########## host gateways ##########
+
+centralRouter:
+  eth1:
+    gateway: 192.168.255.1
+
+office1Router:
+  eth1:
+    gateway: 192.168.254.1
+
+
+########## networks ##########
+
+router_www_net:
+  network: 192.168.255.0
+  mask: 255.255.255.252
+  prefix: 30
+  gateway: 192.168.255.1
+  description: Network to connect centralRouter and inetRouter
+
+router_lan_net:
+  network: 192.168.254.0
+  mask: 255.255.255.240
+  prefix: 28
+  gateway: 192.168.254.1
+  description: Network to connect inner routers
+
+testsrv_office1_net:
+  network: 192.168.2.64
+  mask: 255.255.255.192
+  prefix: 26
+  gateway: 192.168.2.65
+  description: Test servers in Office1 network
