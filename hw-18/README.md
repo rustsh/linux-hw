@@ -166,7 +166,7 @@ route/
     ```
 
 5. На всех хостах, кроме inetRouter, на интерфейсе `eth0` отключается маршрут default: выполняется команда `ip route del default`, в файл **/etc/sysconfig/network-scripts/ifcfg-eth0** добавляется параметр `DEFROUTE=no`.
-6. На всех хостах, кроме inetRouter, на интерфейсе `eth1` назначается шлюз: в файл **/etc/sysconfig/network-scripts/ifcfg-eth1** добавляется параметр вида `GATEWAY=192.168.0.1`. Адреса шлюзов для каждой сети и для каждого хоста прописаны в файле [default/main.yml](provisioning/roles/route/defaults/main.yml) роли [route](provisioning/roles/route).
+6. На всех хостах, кроме inetRouter, на интерфейсе `eth1` назначается шлюз: в файл **/etc/sysconfig/network-scripts/ifcfg-eth1** добавляется параметр вида `GATEWAY=192.168.0.1`. Адреса шлюзов для каждой сети и для каждого хоста прописаны в файле [defaults/main.yml](provisioning/roles/route/defaults/main.yml) роли [route](provisioning/roles/route).
 7. Настраивается маршрутизация:
 
    - на каждый хост в каталог **/etc/sysconfig/network-scripts** копируется файл **route-eth1** с прописанными в нём маршрутами:
@@ -194,9 +194,7 @@ route/
         ```
 
 8. После поднятия хостов сервис network находится в статусе `failed` c ошибкой `Connection activation failed: No suitable device found for this connection` для интерфейса `eth0` из-за NetworkManager. При выполнении команды `systemctl restart network` сервис network запускается, но маршруты из файлов **route-eth\*** не подтягиваются. Чтобы избежать этого, сервиc network запускается отдельной командой (после чего рестарт работает нормально).
-9. Отключается сервис NetworkManager, так как, во-первых, сеть настраивается вручную, а во-вторых, он приводит к ошибке, описанной в предыдущем пункте (ошибка повторяется при перезагрузке сервера).
-
-    Альтернативный вариант: во всех файлах **/etc/sysconfig/network-scripts/ifcfg-eth\*** указать параметр `NM_CONTROLLED=no`.
+9. Отключается сервис NetworkManager, так как, во-первых, сеть настраивается вручную, а во-вторых, он приводит к ошибке, описанной в предыдущем пункте (ошибка повторяется при перезагрузке сервера). Кроме того, во всех файлах **/etc/sysconfig/network-scripts/ifcfg-eth\*** указывается параметр `NM_CONTROLLED=no`, отключающий управление интерфейсом посредством NetworkManagarer.
 
 10. После внесения всех изменений перезапускается сервис network.
 

@@ -1,0 +1,17 @@
+---
+- name: Get list of interface config files
+  find:
+    paths: /etc/sysconfig/network-scripts
+    patterns: ifcfg-eth*
+  register: ifcfg_files
+
+- name: set NM_CONTROLLED=no for all interfaces
+  ini_file:
+    path: "{{ item.path }}"
+    section: null
+    option: NM_CONTROLLED
+    value: 'no'
+    no_extra_spaces: yes
+  with_items: "{{ ifcfg_files.files }}"
+  notify:
+    - Restart network

@@ -51,6 +51,8 @@
   notify:
     - Restart network
 
+- include: no_nm.yml
+
 - name: Start network service
   systemd:
     name: network
