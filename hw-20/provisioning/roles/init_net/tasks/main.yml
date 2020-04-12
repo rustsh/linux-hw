@@ -1,0 +1,24 @@
+---
+- name: Install tcpdump
+  yum:
+    name: tcpdump
+    state: present
+
+- name: Start network service
+  systemd:
+    name: network
+    state: started
+    enabled: yes
+
+- name: Stop and disable NetworkManager
+  systemd:
+    name: NetworkManager
+    state: stopped
+    enabled: no
+
+- name: Copy /etc/sysconfig/network
+  template:
+    src: network.j2
+    dest: /etc/sysconfig/network
+  notify:
+    - Restart network

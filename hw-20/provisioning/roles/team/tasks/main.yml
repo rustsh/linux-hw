@@ -1,0 +1,9 @@
+---
+- name: Copy ifcfg files for teaming
+  template:
+    src: "{{ item }}"
+    dest: /etc/sysconfig/network-scripts/{{ item | basename | regex_replace('\.j2$', '') }}
+  with_fileglob:
+    - "{{ role_path }}/templates/*.j2"
+  notify:
+    - Restart network

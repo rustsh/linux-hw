@@ -1,0 +1,12 @@
+DEVICE=team0
+DEVICETYPE=Team
+ONBOOT=yes
+BOOTPROTO=none
+{% if inventory_hostname == "inetRouter" %}
+IPADDR={{ inetRouter_team_ip }}
+{% else %}
+IPADDR={{ centralRouter_team_ip }}
+{% endif %}
+PREFIX=30
+NM_CONTROLLED=no
+TEAM_CONFIG='{"runner": {"name": "activebackup", "hwaddr_policy": "by_active"}, "link_watch": {"name": "ethtool"}}'

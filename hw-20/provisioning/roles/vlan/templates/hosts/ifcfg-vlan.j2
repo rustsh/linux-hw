@@ -1,0 +1,14 @@
+VLAN=yes
+VLAN_NAME_TYPE=VLAN_PLUS_VID_NO_PAD
+DEVICE=vlan{{ vlan_number }}
+PHYSDEV=eth1
+BOOTPROTO=none
+ONBOOT=yes
+TYPE=Ethernet
+{% if "Server" in inventory_hostname %}
+IPADDR={{ server_ip }}
+{% else %}
+IPADDR={{ client_ip }}
+{% endif %}
+PREFIX=24
+NM_CONTROLLED=no

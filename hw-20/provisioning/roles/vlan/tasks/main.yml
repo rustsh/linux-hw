@@ -1,0 +1,8 @@
+---
+- name: Config VLAN on hosts
+  include: hosts.yml
+  when: "'Router' not in inventory_hostname"
+
+- name: Config VLAN on router
+  include: router.yml
+  when: "'Router' in inventory_hostname"

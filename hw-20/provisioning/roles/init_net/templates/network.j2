@@ -1,0 +1,10 @@
+NETWORKING=yes
+HOSTNAME={{ inventory_hostname }}
+NOZEROCONF=yes
+{% if inventory_hostname != "inetRouter" %}
+{% if inventory_hostname == "centralRouter" %}
+GATEWAY={{ router_gateway_ip }}
+{% else %}
+GATEWAY={{ vlan_gateway_ip }}
+{% endif %}
+{% endif %}
