@@ -7,7 +7,7 @@ ONBOOT=yes
 TYPE=Ethernet
 {% if "Server" in inventory_hostname %}
 IPADDR={{ server_ip }}
-{% else %}
+{% elif "Client" in inventory_hostname %}
 IPADDR={{ client_ip }}
 {% endif %}
 PREFIX=24

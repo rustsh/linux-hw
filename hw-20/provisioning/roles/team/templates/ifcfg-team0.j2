@@ -4,7 +4,7 @@ ONBOOT=yes
 BOOTPROTO=none
 {% if inventory_hostname == "inetRouter" %}
 IPADDR={{ inetRouter_team_ip }}
-{% else %}
+{% elif inventory_hostname == "centralRouter" %}
 IPADDR={{ centralRouter_team_ip }}
 {% endif %}
 PREFIX=30
