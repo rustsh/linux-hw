@@ -1,0 +1,10 @@
+---
+dir_centr_net:
+  network: 192.168.0.0
+  prefix: 28
+  gateway: 192.168.0.1
+
+router_www_net:
+  network: 192.168.255.0
+  prefix: 29
+  gateway: 192.168.255.1

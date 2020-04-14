@@ -1,0 +1,10 @@
+---
+- name: Config routing
+  hosts: all
+  roles:
+    - route
+
+- name: Install Nginx on centralServer
+  hosts: centralServer
+  roles:
+    - nginx
