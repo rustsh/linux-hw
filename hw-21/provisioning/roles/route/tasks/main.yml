@@ -1,5 +1,5 @@
 ---
-- include: inet_iptables.yml
+- include: nat.yml
   when: inventory_hostname == "inetRouter"
 
 - name: Copy /etc/sysconfig/network

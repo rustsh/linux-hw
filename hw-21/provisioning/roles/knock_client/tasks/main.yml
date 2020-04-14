@@ -1,0 +1,13 @@
+---
+- name: Install nmap
+  yum:
+    name: nmap
+    state: present
+
+- name: Copy knock script
+  copy:
+    src: knock.sh
+    dest: /home/vagrant/knock.sh
+    owner: vagrant
+    group: vagrant
+    mode: '0755'

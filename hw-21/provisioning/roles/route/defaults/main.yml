@@ -8,3 +8,7 @@ router_www_net:
   network: 192.168.255.0
   prefix: 29
   gateway: 192.168.255.1
+
+internal_net:
+  network: 192.168.0.0
+  prefix: 16

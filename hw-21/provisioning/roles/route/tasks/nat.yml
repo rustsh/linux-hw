@@ -1,0 +1,18 @@
+---
+- name: Install iptables-services
+  yum:
+    name: iptables-services
+    state: present
+
+- name: Start and enable iptables service
+  systemd:
+    name: iptables
+    state: started
+    enabled: yes
+
+- name: Copy iptables rules
+  template:
+    src: iptables.j2
+    dest: /etc/sysconfig/iptables
+  notify:
+    - Restart iptables
