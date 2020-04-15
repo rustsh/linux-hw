@@ -1,22 +1,18 @@
 ---
-- name: Start and enable firewalld
+- name: Install iptables-services
+  yum:
+    name: iptables-services
+    state: present
+
+- name: Start and enable iptables service
   systemd:
-    name: firewalld
+    name: iptables
     state: started
     enabled: yes
 
-- name: Redirect port 8080 to 80 of centralServer
-  firewalld:
-    rich_rule: rule family=ipv4 forward-port port=8080 protocol=tcp to-port=80 to-addr={{ dest_ip }}
-    zone: public
-    state: enabled
-    permanent: yes
-    immediate: yes
-
-- name: Set masquerading to enable redirecting
-  firewalld:
-    zone: public
-    masquerade: yes
-    state: enabled
-    permanent: yes
-    immediate: yes
+- name: Copy iptables rules
+  template:
+    src: iptables.j2
+    dest: /etc/sysconfig/iptables
+  notify:
+    - Restart iptables

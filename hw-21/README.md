@@ -19,7 +19,7 @@
 4. Пробросить порт 80 centralServer на порт 8080 inetRouter2.
 5. Доступ в интернет оставить через inetRouter.
 
-* реализовать проход на 80й порт без маскарадинга
+Задание со звёздочкой: реализовать проход на 80-й порт без маскарадинга.
 
 ### Описание работы
 
@@ -28,7 +28,7 @@
 В работе используется стенд из [домашней работы «Архитектура сетей»](../hw-18) со следующими изменениями:
 
 1. Удалены все лишние серверы и сети.
-2. Добавлен сервер inetRouter2, у которого порт 8080 доступен с хостовой машины. Сеть для связи между роутерами расширена с двух хостов до шести. Доступ в интернет осуществляется через inetRouter, как и на остальных хостах.
+2. Добавлен сервер inetRouter2, у которого порт 8080 проброшен на порт 8080 хостовой машины. Сеть для связи между роутерами расширена с двух хостов до шести. Доступ в интернет осуществляется через inetRouter, как и на остальных хостах.
 3. Адрес шлюза указан в файле **/etc/sysconfig/network**, все лишние файлы **route-eth\*** удалены.
 
 #### Knocking Port
@@ -52,7 +52,24 @@
 
 #### Проброс портов
 
+Nginx на centralServer устанавливается и запускается при помощи роли [nginx](provisioning/roles/nginx).
 
+Для проброса порта 8080 inetRouter2 на порт 80 centralServer создана роль [forward](provisioning/roles/forward).
+
+При запуске роли:
+
+1. Устанавливается пакет iptables-service.
+2. Запускается сервис iptables.
+3. В каталог **/etc/sysconfig** копируется файл [iptables](provisioning/roles/forward/templates/iptables.j2), в котором указаны правила для проброса порта:
+
+    ```
+    -A PREROUTING -p tcp -m tcp --dport 8080 -j DNAT --to-destination 192.168.0.2:80
+    -A POSTROUTING -d 192.168.0.2/32 -p tcp -j SNAT --to-source 192.168.255.3
+    ```
+
+    192.168.0.2 — адрес centralServer, 192.168.255.3 — inetRouter2.
+
+4. Сервис iptables перезапускаются.
 
 ### Проверка работы
 
@@ -92,7 +109,40 @@
 
 #### Проверка проброса портов
 
+На хостовой машине перейти по адресу http://localhost:8080/ — должна открыться стартовая страница Nginx:
 
+![](images/nginx.png)
+
+Ещё один способ — обратиться к порту 8080 inetRouter2 на одной из виртуальных машин:
+
+```console
+[vagrant@centralRouter ~]$ curl 192.168.255.3:8080
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+```
 
 <br/>
 

@@ -19,7 +19,7 @@
   roles:
     - nginx
 
-# - name: Set forwarding from inetRouter2 to centralServer
-#   hosts: inetRouter2
-#   roles:
-#     - forward
+- name: Set forwarding from inetRouter2 to centralServer
+  hosts: inetRouter2
+  roles:
+    - forward

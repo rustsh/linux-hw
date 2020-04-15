@@ -26,7 +26,6 @@ MACHINES = {
     :fport => {guest: 8080, host: 8080},
     :net => [
               {ip: '192.168.255.3', adapter: 2, netmask: "255.255.255.248", virtualbox__intnet: "router-www-net"},
-              # {ip: '192.168.33.10', adapter: 3}
             ]
   },
 }

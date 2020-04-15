@@ -3,5 +3,5 @@
 :INPUT ACCEPT [0:0]
 :OUTPUT ACCEPT [0:0]
 :POSTROUTING ACCEPT [0:0]
--A POSTROUTING -s {{ internal_net.address }}/{{ internal_net.prefix }} -o eth0 -j MASQUERADE
+-A POSTROUTING -s {{ internal_net.network }}/{{ internal_net.prefix }} -o eth0 -j MASQUERADE
 COMMIT
