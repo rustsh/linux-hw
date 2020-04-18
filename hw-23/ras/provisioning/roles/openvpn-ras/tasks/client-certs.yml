@@ -1,0 +1,12 @@
+---
+- name: Generate a standalone keypair and request (CSR) for client
+  shell:
+    cmd: echo 'client' | {{ easyrsa_path }} gen-req client nopass
+    chdir: /etc/openvpn/
+    creates: /etc/openvpn/pki/private/client.key
+
+- name: Sign client certificate
+  shell:
+    cmd: echo 'yes' | {{ easyrsa_path }} sign-req client client
+    chdir: /etc/openvpn/
+    creates: /etc/openvpn/pki/issued/client.crt

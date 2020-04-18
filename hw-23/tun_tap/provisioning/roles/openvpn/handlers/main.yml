@@ -1,0 +1,11 @@
+---
+- name: Restart OpenVPN
+  systemd:
+    name: openvpn@server
+    state: restarted
+
+- name: Restart OpenVPN after copying key
+  systemd:
+    name: openvpn@server
+    state: restarted
+  delegate_to: client

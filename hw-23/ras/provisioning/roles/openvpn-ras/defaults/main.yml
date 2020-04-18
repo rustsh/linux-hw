@@ -1,0 +1,14 @@
+---
+easyrsa_path: /usr/share/easy-rsa/3/easyrsa
+
+server_host:
+  addr: 192.168.133.10
+
+server_vpn:
+  network: 10.10.10.0
+  mask: 255.255.255.0
+
+host_keys_certs:
+  - /etc/openvpn/pki/ca.crt
+  - /etc/openvpn/pki/issued/client.crt
+  - /etc/openvpn/pki/private/client.key

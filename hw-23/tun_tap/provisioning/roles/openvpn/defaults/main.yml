@@ -1,0 +1,12 @@
+---
+virt_int: tap
+server_host:
+  addr: 192.168.33.10
+  network: 192.168.33.0
+  mask: 255.255.255.0
+server_vpn:
+  addr: 10.10.10.1
+  mask: 255.255.255.0
+client_vpn:
+  addr: 10.10.10.2
+  mask: 255.255.255.0

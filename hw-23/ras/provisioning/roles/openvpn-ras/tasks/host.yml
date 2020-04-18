@@ -1,0 +1,15 @@
+---
+- name: Copy client keys and certificates to host
+  fetch:
+    src: "{{ item }}"
+    dest: ~/openvpn/
+    flat: yes
+  with_items: "{{ host_keys_certs }}"
+
+- name: Copy client config to host
+  template:
+    src: client.conf.j2
+    dest: "{{ lookup('env','HOME') }}/openvpn/client.conf"
+    owner: "{{ lookup('env','USER') }}"
+    group: "{{ lookup('env','USER') }}"
+  delegate_to: localhost

@@ -1,0 +1,8 @@
+dev {{ virt_int }}
+ifconfig {{ server_vpn.addr }} {{ server_vpn.mask }}
+topology subnet
+secret /etc/openvpn/static.key
+comp-lzo
+status /var/log/openvpn-status.log
+log /var/log/openvpn.log
+verb 3

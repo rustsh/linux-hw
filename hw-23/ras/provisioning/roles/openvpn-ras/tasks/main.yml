@@ -1,0 +1,38 @@
+---
+- name: Disable SELinux
+  command: setenforce 0
+
+- name: Install EPEL repo
+  yum:
+    name: epel-release
+    state: present
+
+- name: Install OpenVPN and easy-rsa
+  yum:
+    name: [openvpn, easy-rsa]
+    state: present
+
+- name: Init pki
+  shell:
+    cmd: /usr/share/easy-rsa/3/easyrsa init-pki
+    chdir: /etc/openvpn/
+    creates: /etc/openvpn/pki/
+
+- include: server-certs.yml
+
+- include: client-certs.yml
+
+- name: Copy OpenVPN server config
+  template:
+    src: server.conf.j2
+    dest: /etc/openvpn/server.conf
+  notify:
+    - Restart OpenVPN
+
+- name: Start and enable OpenVPN service
+  systemd:
+    name: openvpn@server
+    state: started
+    enabled: yes
+
+- include: host.yml

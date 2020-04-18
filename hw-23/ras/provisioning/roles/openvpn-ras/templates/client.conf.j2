@@ -1,0 +1,12 @@
+dev tun
+proto udp
+remote {{ server_host.addr }} 1194
+client
+resolv-retry infinite
+ca ./ca.crt
+cert ./client.crt
+key ./client.key
+persist-key
+persist-tun
+comp-lzo
+verb 3

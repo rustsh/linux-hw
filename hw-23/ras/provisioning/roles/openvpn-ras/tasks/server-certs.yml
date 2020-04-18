@@ -1,0 +1,30 @@
+---
+- name: Create CA certificate
+  shell:
+    cmd: echo 'rasvpn' | {{ easyrsa_path }} build-ca nopass
+    chdir: /etc/openvpn/
+    creates: /etc/openvpn/pki/ca.crt
+
+- name: Generate a standalone keypair and request (CSR) for server
+  shell:
+    cmd: echo 'rasvpn' | {{ easyrsa_path }} gen-req server nopass
+    chdir: /etc/openvpn/
+    creates: /etc/openvpn/pki/private/server.key
+
+- name: Sign server certificate
+  shell:
+    cmd: echo 'yes' | {{ easyrsa_path }} sign-req server server
+    chdir: /etc/openvpn/
+    creates: /etc/openvpn/pki/issued/server.crt
+
+- name: Generate DH (Diffie‐Hellman) parameters
+  shell:
+    cmd: "{{ easyrsa_path }} gen-dh"
+    chdir: /etc/openvpn/
+    creates: /etc/openvpn/pki/dh.pem
+
+- name: Generate a random key to be shared
+  shell: 
+    cmd: openvpn --genkey --secret ta.key
+    chdir: /etc/openvpn/
+    creates: /etc/openvpn/ta.key

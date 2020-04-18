@@ -1,0 +1,17 @@
+---
+- name: Create key
+  command:
+    cmd: openvpn --genkey --secret /etc/openvpn/static.key
+    creates: /etc/openvpn/static.key
+
+- name: Read static.key
+  command: cat /etc/openvpn/static.key
+  register: static_key
+
+- name: Copy static.key to client
+  copy:
+    content: "{{ static_key.stdout }}"
+    dest: /etc/openvpn/static.key
+  delegate_to: client
+  notify:
+    - Restart OpenVPN after copying key
