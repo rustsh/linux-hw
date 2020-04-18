@@ -3,4 +3,4 @@
   roles:
     - role: openvpn
       vars:
-        virt_int: tun
+        virt_int: tap

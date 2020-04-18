@@ -1,7 +1,4 @@
 ---
-- name: Disable SELinux
-  command: setenforce 0
-
 - name: Install EPEL repo
   yum:
     name: epel-release
