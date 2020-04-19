@@ -7,6 +7,7 @@
   with_items: "{{ host_keys_certs }}"
 
 - name: Copy client config to host
+  become: no
   template:
     src: client.conf.j2
     dest: "{{ lookup('env','HOME') }}/openvpn/client.conf"
