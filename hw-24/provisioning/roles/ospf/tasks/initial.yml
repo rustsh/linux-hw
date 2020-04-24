@@ -1,0 +1,43 @@
+---
+- name: Copy /etc/sysconfig/network
+  template:
+    src: network.j2
+    dest: /etc/sysconfig/network
+  notify:
+    - Restart network
+
+- name: Config sysctl
+  copy:
+    src: "{{ role_path }}/files/"
+    dest: /etc/sysctl.d/
+  notify:
+    - Restart network
+
+- name: Get list of interface config files
+  find:
+    paths: /etc/sysconfig/network-scripts
+    patterns: ifcfg-eth*
+  register: ifcfg_files
+
+- name: set NM_CONTROLLED=no for all interfaces
+  ini_file:
+    path: "{{ item.path }}"
+    section: null
+    option: NM_CONTROLLED
+    value: 'no'
+    no_extra_spaces: yes
+  with_items: "{{ ifcfg_files.files }}"
+  notify:
+    - Restart network
+
+- name: Start network service
+  systemd:
+    name: network
+    state: started
+    enabled: yes
+
+- name: Stop and disable NetworkManager
+  systemd:
+    name: NetworkManager
+    state: stopped
+    enabled: no

@@ -1,0 +1,10 @@
+---
+- name: Restart network
+  systemd:
+    name: network
+    state: restarted
+
+- name: Restart bird
+  systemd:
+    name: bird
+    state: restarted
