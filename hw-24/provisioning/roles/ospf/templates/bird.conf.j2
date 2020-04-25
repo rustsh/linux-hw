@@ -24,9 +24,7 @@ protocol device {
 protocol ospf MyOSPF {
     ecmp;
     area 0 {
-        stub no;
         interface "eth*" {
-            hello 10;
             cost 10;
         };
     };
