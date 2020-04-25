@@ -6,10 +6,10 @@
   notify:
     - Restart network
 
-- name: Config sysctl
+- name: Enable forwarding
   copy:
-    src: "{{ role_path }}/files/"
-    dest: /etc/sysctl.d/
+    src: forwarding.conf
+    dest: /etc/sysctl.d/forwarding.conf
   notify:
     - Restart network
 

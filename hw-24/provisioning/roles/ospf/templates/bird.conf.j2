@@ -14,7 +14,6 @@ protocol kernel {
     persist;        # Don't remove routes on bird shutdown
     scan time 20;   # Scan kernel routing table every 20 seconds
     export all;     # Default is export none
-    device routes;
 }
 
 # This pseudo-protocol watches all interface up/down events.
@@ -23,25 +22,12 @@ protocol device {
 }
 
 protocol ospf MyOSPF {
-    area 0.0.0.0 {
+    ecmp;
+    area 0 {
         stub no;
-        interface "eth1" {
+        interface "eth*" {
             hello 10;
-            retransmit 6;
             cost 10;
-            transmit delay 5;
-            dead count 5;
-            wait 50;
-            type broadcast;
-        };
-        interface "eth2" {
-            hello 10;
-            retransmit 6;
-            cost 10;
-            transmit delay 5;
-            dead count 5;
-            wait 50;
-            type broadcast;
         };
     };
 }

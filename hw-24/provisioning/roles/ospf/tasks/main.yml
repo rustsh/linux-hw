@@ -6,14 +6,14 @@
     name: epel-release
     state: present
 
-- name: Install bird and traceroute
+- name: Install network software
   yum:
-    name: [bird, traceroute, tcpdump, iperf3]
+    name: [bird, traceroute, tcpdump]
     state: present
 
 - name: Copy bird config
   template:
-    src: bird.conf
+    src: bird.conf.j2
     dest: /etc/bird.conf
     owner: root
     group: bird
