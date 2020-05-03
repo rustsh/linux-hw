@@ -1,0 +1,44 @@
+---
+- name: Copy named.conf to master
+  template:
+    src: master-named.conf.j2
+    dest: /etc/named.conf
+    owner: root
+    group: named
+    mode: 0640
+  when: inventory_hostname == dns_master.name
+  notify: Restart named
+
+- name: Copy named.conf to slave
+  template:
+    src: slave-named.conf.j2
+    dest: /etc/named.conf
+    owner: root
+    group: named
+    mode: 0640
+  when: inventory_hostname == dns_slave.name
+  notify: Restart named
+
+- name: Copy zones to master
+  copy:
+    src: zones/
+    dest: /var/named/zones/
+    owner: root
+    group: named
+    mode: 0660
+  when: inventory_hostname == dns_master.name
+  notify: Restart named
+
+- name: Copy resolv.conf to the servers
+  copy:
+    src: servers-resolv.conf
+    dest: /etc/resolv.conf
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Ensure named is running and enabled
+  systemd:
+    name: named
+    state: started
+    enabled: yes

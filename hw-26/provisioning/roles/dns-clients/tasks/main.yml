@@ -1,0 +1,24 @@
+---
+- name: Copy resolv.conf to the client
+  template:
+    src: client-resolv.conf.j2
+    dest: /etc/resolv.conf
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Copy rndc conf file
+  template:
+    src: rndc.conf.j2
+    dest: /home/vagrant/rndc.conf
+    owner: vagrant
+    group: vagrant
+    mode: 0644
+
+- name: Copy motd to the client
+  template:
+    src: client-motd.j2
+    dest: /etc/motd
+    owner: root
+    group: root
+    mode: 0644

@@ -1,0 +1,153 @@
+options {
+
+    // network 
+    listen-on port    53 { 127.0.0.1; {{ dns_slave.ip }}; };
+    listen-on-v6 port 53 { ::1; };
+
+    // data
+    directory          "/var/named";
+    dump-file          "/var/named/data/cache_dump.db";
+    statistics-file    "/var/named/data/named_stats.txt";
+    memstatistics-file "/var/named/data/named_mem_stats.txt";
+
+    // server
+    recursion yes;
+    allow-query    { any; };
+    allow-transfer { any; };
+    
+    // dnssec
+    dnssec-enable     yes;
+    dnssec-validation yes;
+
+    // others
+    bindkeys-file          "/etc/named.iscdlv.key";
+    managed-keys-directory "/var/named/dynamic";
+    pid-file               "/run/named/named.pid";
+    session-keyfile        "/run/named/session.key";
+};
+
+logging {
+    channel default_debug {
+        file "data/named.run";
+        severity dynamic;
+    };
+};
+
+// RNDC Control for client
+key "rndc-key" {
+    algorithm hmac-md5;
+    secret "GrtiE9kz16GK+OKKU/qJvQ==";
+};
+
+controls {
+    inet {{ dns_slave.ip }} allow { {{ client1_ip }}; } keys { "rndc-key"; };
+};
+
+// ZONE TRANSFER WITH TSIG
+include "/etc/named.zonetransfer.key";
+
+server {{ dns_master.ip }} {
+    keys { "zonetransfer.key"; };
+};
+
+acl client1 { {{ client1_ip }}; };
+acl client2 { {{ client2_ip }}; };
+
+view for_client1 {
+
+    match-clients { client1; };
+
+    // root zone
+    zone "." IN {
+        type hint;
+        file "named.ca";
+    };
+
+    // zones like localhost
+    include "/etc/named.rfc1912.zones";
+
+    // root's DNSKEY
+    include "/etc/named.root.key";
+
+    // first zone
+    zone "dns.lab" {
+        type slave;
+        masters { {{ dns_master.ip }}; };
+        file "slaves/client1.dns.lab";
+    };
+
+    // second zone
+    zone "newdns.lab" {
+        type slave;
+        masters { {{ dns_master.ip }}; };
+        file "slaves/newdns.lab";
+    };
+
+    // reverse zone
+    zone "50.168.192.in-addr.arpa" {
+        type slave;
+        masters { {{ dns_master.ip }}; };
+        file "slaves/dns.lab.rev";
+    };
+};
+
+view for_client2 {
+
+    match-clients { client2; };
+
+    // root zone
+    zone "." IN {
+        type hint;
+        file "named.ca";
+    };
+
+    // zones like localhost
+    include "/etc/named.rfc1912.zones";
+
+    // root's DNSKEY
+    include "/etc/named.root.key";
+
+    // first zone
+    zone "dns.lab" {
+        type slave;
+        masters { {{ dns_master.ip }}; };
+        file "slaves/client2.dns.lab";
+    };
+
+    // reverse zone
+    zone "50.168.192.in-addr.arpa" {
+        in-view for_client1;
+    };
+};
+
+view for_all {
+
+    match-clients { any; };
+
+    // root zone
+    zone "." IN {
+        type hint;
+        file "named.ca";
+    };
+
+    // zones like localhost
+    include "/etc/named.rfc1912.zones";
+
+    // root's DNSKEY
+    include "/etc/named.root.key";
+
+    // first zone
+    zone "dns.lab" {
+        in-view for_client2;
+    };
+
+    // second zone
+    zone "newdns.lab" {
+        in-view for_client1;
+    };
+
+    // reverse zone
+    zone "50.168.192.in-addr.arpa" {
+        in-view for_client1;
+    };
+};

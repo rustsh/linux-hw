@@ -1,0 +1,12 @@
+---
+- name: Config DNS servers
+  hosts: ns01, ns02
+  roles:
+    - dns-all
+    - dns-servers
+
+- name: Config clients
+  hosts: client1, client2
+  roles:
+    - dns-all
+    - dns-clients

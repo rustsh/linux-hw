@@ -1,0 +1,10 @@
+### Welcome to the DNS lab! ###
+
+- Use this client to test the enviroment, with dig or nslookup.
+    dig @{{ dns_master.ip }} {{ dns_master.name }}.dns.lab
+    dig @{{ dns_slave.ip }} -x {{ dns_master.ip }}
+
+- rndc is also available to manage the servers
+    rndc -c ~/rndc.conf reload
+
+Enjoy!

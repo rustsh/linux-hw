@@ -1,0 +1,13 @@
+---
+- name: Install packages
+  yum:
+    name: [bind, bind-utils, ntp]
+    state: latest
+
+- name: Copy transferkey to all servers and the client
+  copy:
+    src: named.zonetransfer.key
+    dest: /etc/named.zonetransfer.key
+    owner: root
+    group: named
+    mode: 0644
