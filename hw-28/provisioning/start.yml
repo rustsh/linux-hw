@@ -1,5 +1,9 @@
 ---
-- hosts: all
+- name: Start server
+  hosts: all
+  vars:
+    host_ip: 192.168.33.10
   roles:
     - nginx
     - docker
+    - ghost

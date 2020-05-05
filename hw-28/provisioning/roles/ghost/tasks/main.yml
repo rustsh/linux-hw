@@ -1,0 +1,18 @@
+---
+- name: Install Ghost
+  docker_container:
+    name: ghost
+    image: ghost:latest
+    state: started
+    restart_policy: always
+    ports:
+      - 2368:2368
+    env:
+      url: http://{{ host_ip }}:2368
+
+- name: Copy nginx config to server
+  copy:
+    src: ghost.conf
+    dest: /etc/nginx/conf.d/ghost.conf
+  notify:
+    - Restart nginx
