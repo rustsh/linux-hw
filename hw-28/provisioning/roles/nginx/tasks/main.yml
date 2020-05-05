@@ -1,0 +1,23 @@
+---
+- name: Add Nginx repo
+  copy:
+    src: nginx.repo
+    dest: /etc/yum.repos.d/nginx.repo
+
+- name: Install Nginx
+  yum:
+    name: nginx
+    state: present
+
+- name: Copy nginx.conf
+  copy:
+    src: nginx.conf
+    dest: /etc/nginx/nginx.conf
+  notify:
+    - Restart nginx
+
+- name: Start Nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
