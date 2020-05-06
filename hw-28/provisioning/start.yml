@@ -3,7 +3,11 @@
   hosts: all
   vars:
     host_ip: 192.168.33.10
+    network: web
   roles:
-    - nginx
+    # - old-nginx
     - docker
+    - network
+    - nginx
     - ghost
+    - netdata

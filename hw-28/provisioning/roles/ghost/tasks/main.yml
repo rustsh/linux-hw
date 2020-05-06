@@ -5,9 +5,11 @@
     image: ghost:latest
     state: started
     restart_policy: always
-    ports:
-      - 2368:2368
+    # ports:
+    #   - 2368:2368
     volumes:
-      - /opt/ghost/content:/var/lib/ghost/content
+      - /opt/ghost/content/:/var/lib/ghost/content/
     env:
       url: http://{{ host_ip }}/blog
+    networks:
+      - name: "{{ network }}"
