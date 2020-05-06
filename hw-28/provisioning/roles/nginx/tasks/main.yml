@@ -34,3 +34,10 @@
     name: httpd_can_network_connect
     state: yes
     persistent: yes
+
+- name: Copy default.conf
+  copy:
+    src: default.conf
+    dest: /etc/nginx/conf.d/default.conf
+  notify:
+    - Restart nginx

@@ -7,12 +7,7 @@
     restart_policy: always
     ports:
       - 2368:2368
+    volumes:
+      - /opt/ghost/content:/var/lib/ghost/content
     env:
-      url: http://{{ host_ip }}:2368
-
-- name: Copy nginx config to server
-  copy:
-    src: ghost.conf
-    dest: /etc/nginx/conf.d/ghost.conf
-  notify:
-    - Restart nginx
+      url: http://{{ host_ip }}/blog
