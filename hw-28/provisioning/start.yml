@@ -5,9 +5,9 @@
     host_ip: 192.168.33.10
     network: web
   roles:
-    # - old-nginx
     - docker
     - network
-    - nginx
     - ghost
+    - teedy
     - netdata
+    - nginx

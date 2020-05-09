@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Веб-сервер</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Добро пожаловать на веб-сервер!</h1>
+<p>Какой сервис вы хотите посетить?
+    <ul>
+        <li><a href="http://{{ host_ip }}/blog">Блог</a></li>
+        <li><a href="http://{{ host_ip }}/docs">Документы</a></li>
+        <li><a href="http://{{ host_ip }}/monitor">Мониторинг</a></li>
+    </ul>
+</p>
+<br/>
+<p>
+<a href="https://github.com/rustsh/linux-hw/tree/master/hw-28">Перейти на страницу проекта на Github</a>
+</p>
+</body>
+</html>

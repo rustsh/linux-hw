@@ -1,8 +1,26 @@
 ---
+- name: Create Nginx directories
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - /opt/nginx/conf.d
+    - /opt/nginx/html
+    - /opt/nginx/log
+
 - name: Copy default.conf to host
   copy:
     src: default.conf
-    dest: /opt/nginx/conf.d/
+    dest: /opt/nginx/conf.d/default.conf
+  notify:
+    - Restart nginx container
+
+- name: Copy index.html to host
+  template:
+    src: index.html.j2
+    dest: /opt/nginx/html/index.html
+  notify:
+    - Restart nginx container
 
 - name: Install Nginx
   docker_container:
@@ -14,8 +32,8 @@
       - 80:80
       - 443:443
     volumes:
-      # - /opt/nginx.conf:/etc/nginx/nginx.conf
-      - /opt/nginx/conf.d/:/etc/nginx/conf.d/
-      - /opt/nginx/log/:/var/log/nginx/
+      - /opt/nginx/conf.d:/etc/nginx/conf.d
+      - /opt/nginx/html:/usr/share/nginx/html
+      - /opt/nginx/log:/var/log/nginx
     networks:
       - name: "{{ network }}"

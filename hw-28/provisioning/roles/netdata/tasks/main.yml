@@ -5,8 +5,6 @@
     image: netdata/netdata
     state: started
     restart_policy: always
-    # ports:
-    #   - 19999:19999
     volumes:
       - /etc/passwd:/host/etc/passwd:ro
       - /etc/group:/host/etc/group:ro

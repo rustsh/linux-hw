@@ -1,0 +1,13 @@
+---
+- name: Install Teedy
+  docker_container:
+    name: teedy
+    image: sismics/docs:v1.8
+    state: started
+    restart_policy: always
+    volumes:
+      - /opt/teedy/data:/data
+    env:
+      DOCS_BASE_URL: http://{{ host_ip }}/docs
+    networks:
+      - name: "{{ network }}"
