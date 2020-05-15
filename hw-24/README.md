@@ -1,346 +1,325 @@
-## Домашнее задание к занятию № 24 — «Статическая и динамическая маршрутизация»  <!-- omit in toc -->
+## Домашнее задание к занятию № 24 — «Мосты, туннели и VPN»  <!-- omit in toc -->
 
 ### Оглавление  <!-- omit in toc -->
 
 - [Задание](#Задание)
-- [Создание стенда](#Создание-стенда)
-- [Настройка динамической маршрутизации](#Настройка-динамической-маршрутизации)
-- [Проверка асимметричного роутинга](#Проверка-асимметричного-роутинга)
-- [Изменение стоимости маршрута и симметричный роутинг](#Изменение-стоимости-маршрута-и-симметричный-роутинг)
-  - [Отключение асимметричного роутинга](#Отключение-асимметричного-роутинга)
-  - [Изменение стоимости маршрута](#Изменение-стоимости-маршрута)
+- [Описание работы](#Описание-работы)
+  - [TUN/TAP](#tuntap)
+  - [RAS](#ras)
+- [Проверка работы](#Проверка-работы)
+  - [Проверка TUN/TAP](#Проверка-tuntap)
+    - [Проверка TAP](#Проверка-tap)
+    - [Проверка TUN](#Проверка-tun)
+    - [Разница между TUN и TAP](#Разница-между-tun-и-tap)
+  - [Проверка RAS](#Проверка-ras)
 
 ### Задание
 
-1. Поднять три виртуальные машины.
-2. Объединить их разными private network.
-3. Поднять OSPF между машинами средствами программных маршрутизаторов на выбор: Quagga, FRR или BIRD.
-4. Изобразить асимметричный роутинг.
-5. Сделать один из линков «дорогим», но чтобы при этом роутинг был симметричным.
+1. Между двумя виртуальными машинами поднять VPN в режимах:
+   - TUN;
+   - TAP.
 
-### Создание стенда
+2. Поднять RAS на базе OpenVPN с клиентскими сертификатами, подключиться с локальной машины на виртуальную машину.
 
-Создаваемые машины и сетевые интерфейсы описаны в [Vagrantfile](Vagrantfile).
+### Описание работы
 
-Схема стенда:
+#### TUN/TAP
 
-![](images/routers.png)
+Все файлы для первого задания находятся в каталоге [tun_tap](tun_tap).
 
-Проверим работу без OSPF:
+При выполнении команды `vagrant up` поднимаются две виртуальные машины — server и client, после чего запускается их настройка посредством Ansible ([Vagrantfile](tun_tap/Vagrantfile)).
 
-1. Выполним команду `vagrant up --no-provision`, чтобы создать стенд без вызова Ansible.
-2. Выполним вход на одну из машин — пусть для примера это будет **one**: `vagrant ssh one`.
-3. Удалим маршрут по умолчанию: `sudo ip r del default`.
-4. Посмотрим таблицу маршрутизации:
+Шаги предварительной настройки:
+
+1. Устанавливаются пакеты openvpn и iperf3.
+2. В каталог **/etc/openvpn** копируется файл **server.conf** ([для сервера](tun_tap/provisioning/roles/openvpn/templates/server/server.conf.j2), [для клиента](tun_tap/provisioning/roles/openvpn/templates/client/server.conf.j2)).
+
+    Значение параметра `dev` в файле конфигурации задаётся в [стартовом плейбуке](tun_tap/provisioning/start.yml) в переменной `virt_int`.
+
+3. На сервере генерируется ключ, после чего он копируется в каталог **/etc/openvpn** на стороне клиента.
+4. Запускается сервис openvpn@server.
+
+#### RAS
+
+Все файлы для второго задания находятся в каталоге [ras](ras).
+
+При выполнении команды `vagrant up` поднимается одна виртуальная машина, после чего запускается её настройка посредством Ansible ([Vagrantfile](ras/Vagrantfile)).
+
+Шаги предварительной настройки:
+
+1. Устанавливаются пакеты openvpn и easy-rsa.
+2. В каталоге **/etc/openvpn** инициализируется PKI.
+3. Генерируются сертификаты и ключи для сервера и клиента.
+4. В каталог **/etc/openvpn** копируется файл [server.conf](ras/provisioning/roles/openvpn-ras/templates/server.conf.j2).
+5. Запускается сервис openvpn@server.
+6. На хостовой машине в домашнем каталоге пользователя, запустившего Ansible, создаётся директория **openvpn**, в которую копируются необходимые ключи и сертификаты, а также файл [client.conf](ras/provisioning/roles/openvpn-ras/templates/client.conf.j2).
+
+### Проверка работы
+
+#### Проверка TUN/TAP
+
+Перед запуском необходимо перейти в каталог [tun_tap](tun_tap).
+
+##### Проверка TAP
+
+1. В стартовом плейбуке указать значение переменной `virt_int: tap` и выполнить команду `vagrant up`.
+2. В разных терминалах зайти на сервер и на клиент.
+3. Убедиться, что виртуальные интерфейсы и новые маршруты созданы:
+
+    на сервере:
 
     ```console
-    [vagrant@one ~]$ ip r
-    10.0.2.0/24 dev eth0 proto kernel scope link src 10.0.2.15 metric 100 
-    10.10.10.0/24 dev eth1 proto kernel scope link src 10.10.10.10 metric 101 
-    10.10.20.0/24 dev eth2 proto kernel scope link src 10.10.20.10 metric 102
+    [vagrant@localhost ~]$ ip a
+    ...
+    5: tap0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UNKNOWN group default qlen 100
+        link/ether 96:59:a0:1c:8d:ef brd ff:ff:ff:ff:ff:ff
+        inet 10.10.10.1/24 brd 10.10.10.255 scope global tap0
+           valid_lft forever preferred_lft forever
+        inet6 fe80::9459:a0ff:fe1c:8def/64 scope link
+           valid_lft forever preferred_lft forever
+
+    [vagrant@localhost ~]$ ip r
+    default via 10.0.2.2 dev eth0 proto dhcp metric 100
+    10.0.2.0/24 dev eth0 proto kernel scope link src 10.0.2.15 metric 100
+    10.10.10.0/24 dev tap0 proto kernel scope link src 10.10.10.1
+    192.168.33.0/24 dev eth1 proto kernel scope link src 192.168.33.10 metric 101
+
+    [vagrant@localhost ~]$ ip l
+    ...
+    5: tap0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UNKNOWN mode DEFAULT group default qlen 100
+        link/ether 96:59:a0:1c:8d:ef brd ff:ff:ff:ff:ff:ff
     ```
 
-5. Убедимся, что подсеть 10.10.30.0/24 недоступна:
+    на клиенте:
 
     ```console
-    [vagrant@one ~]$ ping 10.10.30.30
-    connect: Network is unreachable
+    [vagrant@localhost ~]$ ip a
+    ...
+    6: tap0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UNKNOWN group default qlen 100
+        link/ether 56:07:d6:9e:66:56 brd ff:ff:ff:ff:ff:ff
+        inet 10.10.10.2/24 brd 10.10.10.255 scope global tap0
+           valid_lft forever preferred_lft forever
+        inet6 fe80::5407:d6ff:fe9e:6656/64 scope link
+           valid_lft forever preferred_lft forever
+
+    [vagrant@localhost ~]$ ip r
+    default via 10.0.2.2 dev eth0 proto dhcp metric 100
+    10.0.2.0/24 dev eth0 proto kernel scope link src 10.0.2.15 metric 100
+    10.10.10.0/24 dev tap0 proto kernel scope link src 10.10.10.2
+    192.168.33.0/24 dev eth1 proto kernel scope link src 192.168.33.20 metric 101
+
+    [vagrant@localhost ~]$ ip l
+    ...
+    6: tap0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UNKNOWN mode DEFAULT group default qlen 100
+        link/ether 56:07:d6:9e:66:56 brd ff:ff:ff:ff:ff:ff
     ```
 
-6. Перезапустим сервис network, чтобы восстановить маршрут по умолчанию (необходим для дальнейшей работы): `sudo systemctl restart network`.
+4. На сервере выполнить команду `iperf3 -s`.
+5. На клиенте запустить передачу пакетов:
 
-### Настройка динамической маршрутизации
+    ```console
+    [vagrant@localhost ~]$ iperf3 -c 10.10.10.1 -t 60 -i 5
+    Connecting to host 10.10.10.1, port 5201
+    [  4] local 10.10.10.2 port 37244 connected to 10.10.10.1 port 5201
+    [ ID] Interval           Transfer     Bandwidth       Retr  Cwnd
+    [  4]   0.00-5.01   sec   120 MBytes   201 Mbits/sec  454    222 KBytes
+    [  4]   5.01-10.00  sec   123 MBytes   207 Mbits/sec  133    408 KBytes
+    [  4]  10.00-15.00  sec   124 MBytes   207 Mbits/sec  285    424 KBytes
+    [  4]  15.00-20.00  sec   125 MBytes   209 Mbits/sec    0    596 KBytes
+    [  4]  20.00-25.00  sec   125 MBytes   210 Mbits/sec   92    604 KBytes
+    [  4]  25.00-30.00  sec   123 MBytes   207 Mbits/sec  341    475 KBytes
+    [  4]  30.00-35.00  sec   124 MBytes   208 Mbits/sec   74    534 KBytes
+    [  4]  35.00-40.01  sec   125 MBytes   210 Mbits/sec   82    391 KBytes
+    [  4]  40.01-45.00  sec   124 MBytes   209 Mbits/sec  153    240 KBytes
+    [  4]  45.00-50.00  sec   125 MBytes   210 Mbits/sec    5    450 KBytes
+    [  4]  50.00-55.01  sec   125 MBytes   209 Mbits/sec  236    406 KBytes
+    [  4]  55.01-60.00  sec   121 MBytes   202 Mbits/sec  626    206 KBytes
+    - - - - - - - - - - - - - - - - - - - - - - - - -
+    [ ID] Interval           Transfer     Bandwidth       Retr
+    [  4]   0.00-60.00  sec  1.45 GBytes   207 Mbits/sec  2481             sender
+    [  4]   0.00-60.00  sec  1.45 GBytes   207 Mbits/sec                  receiver
 
-На хостовой машине выполним команду `vagrant provision`, чтобы запустить конфигурирование машин, которое включает в себя следующие шаги:
-
-1. В директорию **/etc/sysconfig** копируется файл [network](provisioning/roles/ospf/templates/network.j2), в котором:
-   - явно указано использование сети: `NETWORKING=yes`;
-   - указано имя хоста (специфично для каждого сервера): `HOSTNAME=one`;
-   - отключаются маршруты ZEROCONF (маршруты для сети 169.254.0.0/16): `NOZEROCONF=yes`.
-
-2. Включается форвардинг пакетов: в каталог **/etc/sysctl.d** добавляется файл [forwarding.conf](provisioning/roles/ospf/files/forwarding.conf), содержащий следующую строку:
-
+    iperf Done.
     ```
-    net.ipv4.conf.all.forwarding = 1
+
+##### Проверка TUN
+
+1. В стартовом плейбуке указать значение переменной `virt_int: tun` и выполнить команду `vagrant up` (если виртуальные машины уже существуют, то нужно выполнить команду `vagrant provision`).
+2. В разных терминалах зайти на сервер и на клиент.
+3. Убедиться, что виртуальные интерфейсы и новые маршруты созданы:
+
+    на сервере:
+
+    ```console
+    [vagrant@localhost ~]$ ip a
+    ...
+    6: tun0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UNKNOWN group default qlen 100
+        link/none
+        inet 10.10.10.1/24 brd 10.10.10.255 scope global tun0
+           valid_lft forever preferred_lft forever
+        inet6 fe80::8d28:600a:8feb:8da/64 scope link flags 800
+           valid_lft forever preferred_lft forever
+
+    [vagrant@localhost ~]$ ip r
+    default via 10.0.2.2 dev eth0 proto dhcp metric 100
+    10.0.2.0/24 dev eth0 proto kernel scope link src 10.0.2.15 metric 100
+    10.10.10.0/24 dev tun0 proto kernel scope link src 10.10.10.1
+    192.168.33.0/24 dev eth1 proto kernel scope link src 192.168.33.10 metric 101
+
+    [vagrant@localhost ~]$ ip l
+    ...
+    6: tun0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UNKNOWN mode DEFAULT group default qlen 100
+        link/none
     ```
 
-3. Во всех файлах **/etc/sysconfig/network-scripts/ifcfg-eth\*** устанавливается параметр `NM_CONTROLLED=no`, отключающий управление интерфейсом посредством NetworkManager.
-4. Проверяется, запущен ли сервис network (запускается, если нет).
-5. Отключается сервис NetworkManager.
-6. Устанавливаются пакеты: bird, traceroute и tcpdump.
-7. В каталог **/etc** копируется файл конфигурации BIRD [bird.conf](provisioning/roles/ospf/templates/bird.conf.j2) с необходимыми настройками.
-8. Запускается сервис bird.
-9. Удаляется маршрут по умолчанию (для чистоты эксперимента).
+    на клиенте:
 
-Выполним вход на машину **one** и убедимся, что недоступная ранее сеть появилась в таблице маршрутизации:
+    ```console
+    [vagrant@localhost ~]$ ip a
+    ...
+    7: tun0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UNKNOWN group default qlen 100
+        link/none
+        inet 10.10.10.2/24 brd 10.10.10.255 scope global tun0
+           valid_lft forever preferred_lft forever
+        inet6 fe80::573a:c4ff:b01d:5d3c/64 scope link flags 800
+           valid_lft forever preferred_lft forever
 
-```console
-[vagrant@one ~]$ ip r
-10.0.2.0/24 dev eth0 proto kernel scope link src 10.0.2.15 
-10.10.10.0/24 dev eth1 proto kernel scope link src 10.10.10.10 
-10.10.20.0/24 dev eth2 proto kernel scope link src 10.10.20.10 
-10.10.30.0/24 proto bird 
-        nexthop via 10.10.10.30 dev eth1 weight 1 
-        nexthop via 10.10.20.20 dev eth2 weight 1
+    [vagrant@localhost ~]$ ip r
+    default via 10.0.2.2 dev eth0 proto dhcp metric 100
+    10.0.2.0/24 dev eth0 proto kernel scope link src 10.0.2.15 metric 100
+    10.10.10.0/24 dev tun0 proto kernel scope link src 10.10.10.2
+    192.168.33.0/24 dev eth1 proto kernel scope link src 192.168.33.20 metric 101
 
-[vagrant@one ~]$ traceroute 10.10.30.30
-traceroute to 10.10.30.30 (10.10.30.30), 30 hops max, 60 byte packets
- 1  10.10.20.20 (10.10.20.20)  0.383 ms  0.300 ms  0.348 ms
- 2  10.10.30.30 (10.10.30.30)  0.528 ms  0.560 ms  0.522 ms
-```
+    [vagrant@localhost ~]$ ip l
+    ...
+    7: tun0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UNKNOWN mode DEFAULT group default qlen 100
+        link/none
+    ```
 
-В консоли BIRD:
+4. На сервере выполнить команду `iperf3 -s`.
+5. На клиенте запустить передачу пакетов:
 
-```console
-[vagrant@one ~]$ sudo birdc
-BIRD 1.6.8 ready.
-bird> show route
-10.0.2.0/24        dev eth0 [MyOSPF 22:22:04] * I (150/10) [1.1.1.1]
-10.10.10.0/24      dev eth1 [MyOSPF 22:22:04] * I (150/10) [1.1.1.1]
-10.10.20.0/24      dev eth2 [MyOSPF 22:22:04] * I (150/10) [1.1.1.1]
-10.10.30.0/24      multipath [MyOSPF 22:29:14] * I (150/20) [2.2.2.2]
-        via 10.10.10.30 on eth1 weight 1
-        via 10.10.20.20 on eth2 weight 1
-```
+    ```console
+    [vagrant@localhost ~]$ iperf3 -c 10.10.10.1 -t 60 -i 5
+    Connecting to host 10.10.10.1, port 5201
+    [  4] local 10.10.10.2 port 37248 connected to 10.10.10.1 port 5201
+    [ ID] Interval           Transfer     Bandwidth       Retr  Cwnd
+    [  4]   0.00-5.00   sec   123 MBytes   207 Mbits/sec  571    416 KBytes
+    [  4]   5.00-10.00  sec   126 MBytes   211 Mbits/sec  114    408 KBytes
+    [  4]  10.00-15.00  sec   127 MBytes   213 Mbits/sec  105    514 KBytes
+    [  4]  15.00-20.00  sec   127 MBytes   213 Mbits/sec  194    544 KBytes
+    [  4]  20.00-25.00  sec   128 MBytes   215 Mbits/sec   85    517 KBytes
+    [  4]  25.00-30.00  sec   128 MBytes   215 Mbits/sec   72    427 KBytes
+    [  4]  30.00-35.00  sec   129 MBytes   217 Mbits/sec   71    525 KBytes
+    [  4]  35.00-40.01  sec   128 MBytes   214 Mbits/sec  133    416 KBytes
+    [  4]  40.01-45.01  sec   128 MBytes   215 Mbits/sec    0    588 KBytes
+    [  4]  45.01-50.01  sec   129 MBytes   216 Mbits/sec   11    588 KBytes
+    [  4]  50.01-55.00  sec   127 MBytes   214 Mbits/sec    3    600 KBytes
+    [  4]  55.00-60.00  sec   127 MBytes   214 Mbits/sec   44    599 KBytes
+    - - - - - - - - - - - - - - - - - - - - - - - - -
+    [ ID] Interval           Transfer     Bandwidth       Retr
+    [  4]   0.00-60.00  sec  1.49 GBytes   214 Mbits/sec  1403             sender
+    [  4]   0.00-60.00  sec  1.49 GBytes   213 Mbits/sec                  receiver
 
-Обратим внимание, что BIRD построил два маршрута до сети 10.10.30.0/24. За это отвечает параметр `ecmp`: при его включении BIRD создаёт несколько маршрутов до точки назначения, если стоимость путей одинакова.
+    iperf Done.
+    ```
 
-### Проверка асимметричного роутинга
+##### Разница между TUN и TAP
 
-Отправим ICMP-пакеты с машины **one** на адрес 10.10.30.30 (интерфейс `eth2` машины **three**), при этом сканируя программой tcpdump интерфейсы: `eth1` на **two** (через который проходит маршрут согласно traceroute), `eth1` на **three** (который связан с **one** напрямую) и `eth1` на **one** (соседний интерфейс на этом же хосте).
+Основное отличие между TUN и TAP состоит в том, что TAP работает на канальном уровне (L2), а TUN — на сетевом (L3). Это проявляется, в частности, в следующем:
 
-```console
-[vagrant@one ~]$ ping -c4 10.10.30.30
-PING 10.10.30.30 (10.10.30.30) 56(84) bytes of data.
-64 bytes from 10.10.30.30: icmp_seq=1 ttl=64 time=0.640 ms
-64 bytes from 10.10.30.30: icmp_seq=2 ttl=64 time=0.963 ms
-64 bytes from 10.10.30.30: icmp_seq=3 ttl=64 time=1.20 ms
-64 bytes from 10.10.30.30: icmp_seq=4 ttl=64 time=1.04 ms
+- TAP-интерфейс, в отличие от TUN, имеет MAC-адрес (что видно в выводе команды `ip a`) и может быть использован для создания сетевого моста;
+- TAP-интерфейс пропускает широковещательные пакеты (например, по протоколу ARP), что увеличивает объём трафика и повышает нагрузку на сеть.
 
---- 10.10.30.30 ping statistics ---
-4 packets transmitted, 4 received, 0% packet loss, time 3005ms
-rtt min/avg/max/mdev = 0.640/0.962/1.200/0.204 ms
-```
+Таким образом, сервер с поднятым TAP-интерфейсом может использоваться в качестве коммутатора, а с TUN — в качестве маршрутизатора.
 
-Вывод tcpdump на `eth1` машины **two**:
+Сравнение обоих интерфейсов при помощи программы iperf3 показало следующее:
+- объём переданных данных (поле *Transfer*) за один и тот же промежуток времени примерно одинаковый (1,45 Гб для TAP и 1,49 Гб для TUN);
+- средняя скорость передачи TCP-пакетов (поле *Bandwidth*) также приблизительно равна в обоих случаях (207 Мбит/c для TAP и 214 Мбит/c для TUN);
+- а вот число повторно посылаемых пакетов (поле *Retr*) в случае использования TUN гораздо меньше (1403 против 2481 для TAP);
+- объём одновременно переданных данных (поле *Cwnd*) для TUN в среднем больше (512 Кб против 413 Кб для TAP).
 
-```console
-[vagrant@two ~]$ sudo tcpdump -nnt -i eth1 icmp
-tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
-listening on eth1, link-type EN10MB (Ethernet), capture size 262144 bytes
-IP 10.10.20.10 > 10.10.30.30: ICMP echo request, id 8711, seq 1, length 64
-IP 10.10.20.10 > 10.10.30.30: ICMP echo request, id 8711, seq 2, length 64
-IP 10.10.20.10 > 10.10.30.30: ICMP echo request, id 8711, seq 3, length 64
-IP 10.10.20.10 > 10.10.30.30: ICMP echo request, id 8711, seq 4, length 64
-```
+#### Проверка RAS
 
-Вывод tcpdump на `eth1` машины **three**:
+1. Перейти в каталог [ras](ras) и выполнить команду `vagrant up`.
+2. Зайти на виртуальную машину и убедиться, что виртуальный интерфейс и новые маршруты созданы:
 
-```console
-[vagrant@three ~]$ sudo tcpdump -nnt -i eth1 icmp
-tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
-listening on eth1, link-type EN10MB (Ethernet), capture size 262144 bytes
-IP 10.10.30.30 > 10.10.20.10: ICMP echo reply, id 8711, seq 1, length 64
-IP 10.10.30.30 > 10.10.20.10: ICMP echo reply, id 8711, seq 2, length 64
-IP 10.10.30.30 > 10.10.20.10: ICMP echo reply, id 8711, seq 3, length 64
-IP 10.10.30.30 > 10.10.20.10: ICMP echo reply, id 8711, seq 4, length 64
-```
+    ```console
+    [vagrant@localhost ~]$ ip a
+    ...
+    3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+        link/ether 08:00:27:65:65:8d brd ff:ff:ff:ff:ff:ff
+        inet 192.168.133.10/24 brd 192.168.133.255 scope global noprefixroute eth1
+           valid_lft forever preferred_lft forever
+        inet6 fe80::a00:27ff:fe65:658d/64 scope link
+           valid_lft forever preferred_lft forever
+    5: tun0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UNKNOWN group default qlen 100
+        link/none 
+        inet 10.10.10.1 peer 10.10.10.2/32 scope global tun0
+           valid_lft forever preferred_lft forever
+        inet6 fe80::7ecc:2301:6213:67d7/64 scope link flags 800
+           valid_lft forever preferred_lft forever
 
-Вывод tcpdump на `eth1` машины **one**:
+    [vagrant@localhost ~]$ ip r
+    default via 10.0.2.2 dev eth0 proto dhcp metric 100
+    10.0.2.0/24 dev eth0 proto kernel scope link src 10.0.2.15 metric 100
+    10.10.10.0/24 via 10.10.10.2 dev tun0
+    10.10.10.2 dev tun0 proto kernel scope link src 10.10.10.1
+    192.168.133.0/24 dev eth1 proto kernel scope link src 192.168.133.10 metric 101
 
-```console
-[vagrant@one ~]$ sudo tcpdump -nnt -i eth1 icmp
-tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
-listening on eth1, link-type EN10MB (Ethernet), capture size 262144 bytes
-IP 10.10.30.30 > 10.10.20.10: ICMP echo reply, id 8711, seq 1, length 64
-IP 10.10.30.30 > 10.10.20.10: ICMP echo reply, id 8711, seq 2, length 64
-IP 10.10.30.30 > 10.10.20.10: ICMP echo reply, id 8711, seq 3, length 64
-IP 10.10.30.30 > 10.10.20.10: ICMP echo reply, id 8711, seq 4, length 64
-```
+    [vagrant@localhost ~]$ ip l
+    ...
+    5: tun0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UNKNOWN mode DEFAULT group default   qlen 100
+        link/none 
+    ```
 
-Из вывода tcpdump видно, что через **two** проходят только эхо-запросы, а через интерфейсы `eth1` на **one** и **three** — только эхо-ответы.
+3. С хостовой машины подключиться к виртуальной машине, используя OpenVPN. Для этого на хостовой машине перейти в директорию **openvpn** в домашнем каталоге активного пользователя и выполнить команду:
 
-### Изменение стоимости маршрута и симметричный роутинг
+    ```console
+    $ sudo openvpn --config client.conf 
+    ```
 
-#### Отключение асимметричного роутинга
+    Если всё успешно, должно появится сообщение `Initialization Sequence Completed`.
 
-Закомментируем на всех машинах параметр `ecmp` из файла **/etc/bird.conf** и перезапустим сервис bird командой `sudo systemctl restart bird`.
+4. Убедиться, что на хостовой машине также создались виртуальный интерфейс и новые маршруты:
 
-Убедимся, что теперь BIRD строит только один маршрут:
+    ```console
+    $ ip a
+    ...
+    20: tun0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 100
+        link/none 
+        inet 10.10.10.6 peer 10.10.10.5/32 scope global tun0
+           valid_lft forever preferred_lft forever
+        inet6 fe80::f20e:d14e:36b3:d839/64 scope link stable-privacy 
+           valid_lft forever preferred_lft forever
 
-```console
-[vagrant@one ~]$ ip r
-10.0.2.0/24 dev eth0 proto kernel scope link src 10.0.2.15 
-10.10.10.0/24 dev eth1 proto kernel scope link src 10.10.10.10 
-10.10.20.0/24 dev eth2 proto kernel scope link src 10.10.20.10 
-10.10.30.0/24 via 10.10.20.20 dev eth2 proto bird 
+    $ ip r
+    default via 192.168.1.1 dev wlp3s0 proto dhcp metric 600 
+    10.10.10.0/24 via 10.10.10.5 dev tun0 
+    10.10.10.5 dev tun0 proto kernel scope link src 10.10.10.6 
+    192.168.1.0/24 dev wlp3s0 proto kernel scope link src 192.168.1.11 metric 600 
+    192.168.133.0/24 dev vboxnet4 proto kernel scope link src 192.168.133.1
 
-[vagrant@one ~]$ sudo birdc
-BIRD 1.6.8 ready.
-bird> show route
-10.0.2.0/24        dev eth0 [MyOSPF 23:26:16] * I (150/10) [1.1.1.1]
-10.10.10.0/24      dev eth1 [MyOSPF 23:26:35] * I (150/10) [1.1.1.1]
-10.10.20.0/24      dev eth2 [MyOSPF 23:26:16] * I (150/10) [1.1.1.1]
-10.10.30.0/24      via 10.10.20.20 on eth2 [MyOSPF 23:26:51] * I (150/20) [2.2.2.2]
-```
+    $ ip l
+    ...
+    20: tun0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN mode DEFAULT group default    qlen 100
+        link/none 
+    ```
 
-Запомним вывод traceroute:
+5. Убедиться, что на хостовой машине доступен внутренний IP-адрес сервера в туннеле:
 
-```console
-[vagrant@one ~]$ traceroute 10.10.30.30
-traceroute to 10.10.30.30 (10.10.30.30), 30 hops max, 60 byte packets
- 1  10.10.20.20 (10.10.20.20)  0.367 ms  0.317 ms  0.291 ms
- 2  10.10.30.30 (10.10.30.30)  0.507 ms  0.476 ms  0.368 ms
-```
+    ```console
+    $ ping -c4 10.10.10.1
+    PING 10.10.10.1 (10.10.10.1) 56(84) bytes of data.
+    64 bytes from 10.10.10.1: icmp_seq=1 ttl=64 time=0.606 ms
+    64 bytes from 10.10.10.1: icmp_seq=2 ttl=64 time=0.809 ms
+    64 bytes from 10.10.10.1: icmp_seq=3 ttl=64 time=0.916 ms
+    64 bytes from 10.10.10.1: icmp_seq=4 ttl=64 time=0.840 ms
 
-Повторим отправку ICMP-пакетов, сканируя те же интерфейсы:
-
-```console
-[vagrant@one ~]$ ping -c4 10.10.30.30
-PING 10.10.30.30 (10.10.30.30) 56(84) bytes of data.
-64 bytes from 10.10.30.30: icmp_seq=1 ttl=63 time=0.880 ms
-64 bytes from 10.10.30.30: icmp_seq=2 ttl=63 time=1.74 ms
-64 bytes from 10.10.30.30: icmp_seq=3 ttl=63 time=1.60 ms
-64 bytes from 10.10.30.30: icmp_seq=4 ttl=63 time=1.38 ms
-
---- 10.10.30.30 ping statistics ---
-4 packets transmitted, 4 received, 0% packet loss, time 3015ms
-rtt min/avg/max/mdev = 0.880/1.402/1.745/0.330 ms
-```
-
-Вывод tcpdump на `eth1` машины **two**:
-
-```console
-[vagrant@two ~]$ sudo tcpdump -nnt -i eth1 icmp
-tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
-listening on eth1, link-type EN10MB (Ethernet), capture size 262144 bytes
-IP 10.10.20.10 > 10.10.30.30: ICMP echo request, id 10117, seq 1, length 64
-IP 10.10.30.30 > 10.10.20.10: ICMP echo reply, id 10117, seq 1, length 64
-IP 10.10.20.10 > 10.10.30.30: ICMP echo request, id 10117, seq 2, length 64
-IP 10.10.30.30 > 10.10.20.10: ICMP echo reply, id 10117, seq 2, length 64
-IP 10.10.20.10 > 10.10.30.30: ICMP echo request, id 10117, seq 3, length 64
-IP 10.10.30.30 > 10.10.20.10: ICMP echo reply, id 10117, seq 3, length 64
-IP 10.10.20.10 > 10.10.30.30: ICMP echo request, id 10117, seq 4, length 64
-IP 10.10.30.30 > 10.10.20.10: ICMP echo reply, id 10117, seq 4, length 64
-```
-
-Теперь через **two** проходят оба типа сообщений: эхо-запросы и эхо-ответы, — в то время как вывод tcpdump на `eth1` машины **three** и `eth1` машины **one** пуст:
-
-```console
-[vagrant@three ~]$ sudo tcpdump -nnt -i eth1 icmp
-tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
-listening on eth1, link-type EN10MB (Ethernet), capture size 262144 bytes
-^C
-0 packets captured
-0 packets received by filter
-0 packets dropped by kernel
-```
-
-```console
-[vagrant@one ~]$ sudo tcpdump -nnt -i eth1 icmp
-tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
-listening on eth1, link-type EN10MB (Ethernet), capture size 262144 bytes
-^C
-0 packets captured
-0 packets received by filter
-0 packets dropped by kernel
-```
-
-> ***Примечание.*** Если закомментировать параметр `ecmp` только на **one**, оставив его на двух других машинах, то эхо-ответы также будут отправлены через интерфейсы `eth1` машин **three** и **one**, но до источника так и не дойдут: такие пакеты отбрасываются, поскольку на **one** по умолчанию включён Reverse Path Filtering, а второй маршрут (`10.10.30.0/24 via 10.10.10.30`) отсутствует. Чтобы разрешить приём пакетов через другой интерфейс, необходимо присвоить параметру `rp_filter` для интерфейсов `eth1` и `all` значение 2 (нестрогая проверка) либо 0 (отсутствие проверки).
-
-#### Изменение стоимости маршрута
-
-Выполним вход на машину **two** и увеличим значение параметра `cost` в файле **/etc/bird.conf**:
-
-```shell
-protocol ospf MyOSPF {
-    # ecmp;
-    area 0 {
-        interface "eth*" {
-            cost 100;
-        };
-    };
-}
-```
-
-Перезапустим сервис bird, чтобы изменения вступили в силу:
-
-```console
-[vagrant@two ~]$ sudo systemctl restart bird
-```
-
-Выполним вход на машину **one** и убедимся, что маршрут до сети 10.10.30.0/24 перестроен:
-
-```console
-[vagrant@one ~]$ ip r
-10.0.2.0/24 dev eth0 proto kernel scope link src 10.0.2.15 
-10.10.10.0/24 dev eth1 proto kernel scope link src 10.10.10.10 
-10.10.20.0/24 dev eth2 proto kernel scope link src 10.10.20.10 
-10.10.30.0/24 via 10.10.10.30 dev eth1 proto bird 
-
-[vagrant@one ~]$ traceroute 10.10.30.30
-traceroute to 10.10.30.30 (10.10.30.30), 30 hops max, 60 byte packets
- 1  10.10.30.30 (10.10.30.30)  0.735 ms  0.846 ms  0.607 ms
-```
-
-Повторим отправку ICMP-пакетов, сканируя те же интерфейсы:
-
-```console
-[vagrant@one ~]$ ping -c4 10.10.30.30
-PING 10.10.30.30 (10.10.30.30) 56(84) bytes of data.
-64 bytes from 10.10.30.30: icmp_seq=1 ttl=64 time=0.451 ms
-64 bytes from 10.10.30.30: icmp_seq=2 ttl=64 time=1.18 ms
-64 bytes from 10.10.30.30: icmp_seq=3 ttl=64 time=0.797 ms
-64 bytes from 10.10.30.30: icmp_seq=4 ttl=64 time=0.972 ms
-
---- 10.10.30.30 ping statistics ---
-4 packets transmitted, 4 received, 0% packet loss, time 3008ms
-rtt min/avg/max/mdev = 0.451/0.851/1.186/0.270 ms
-```
-
-Вывод tcpdump на `eth1` машины **one**:
-
-```console
-[vagrant@one ~]$ sudo tcpdump -nnt -i eth1 icmp
-tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
-listening on eth1, link-type EN10MB (Ethernet), capture size 262144 bytes
-IP 10.10.10.10 > 10.10.30.30: ICMP echo request, id 5503, seq 1, length 64
-IP 10.10.30.30 > 10.10.10.10: ICMP echo reply, id 5503, seq 1, length 64
-IP 10.10.10.10 > 10.10.30.30: ICMP echo request, id 5503, seq 2, length 64
-IP 10.10.30.30 > 10.10.10.10: ICMP echo reply, id 5503, seq 2, length 64
-IP 10.10.10.10 > 10.10.30.30: ICMP echo request, id 5503, seq 3, length 64
-IP 10.10.30.30 > 10.10.10.10: ICMP echo reply, id 5503, seq 3, length 64
-IP 10.10.10.10 > 10.10.30.30: ICMP echo request, id 5503, seq 4, length 64
-IP 10.10.30.30 > 10.10.10.10: ICMP echo reply, id 5503, seq 4, length 64
-```
-
-Вывод tcpdump на `eth1` машины **three**:
-
-```console
-[vagrant@three ~]$ sudo tcpdump -nnt -i eth1 icmp
-tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
-listening on eth1, link-type EN10MB (Ethernet), capture size 262144 bytes
-IP 10.10.10.10 > 10.10.30.30: ICMP echo request, id 5503, seq 1, length 64
-IP 10.10.30.30 > 10.10.10.10: ICMP echo reply, id 5503, seq 1, length 64
-IP 10.10.10.10 > 10.10.30.30: ICMP echo request, id 5503, seq 2, length 64
-IP 10.10.30.30 > 10.10.10.10: ICMP echo reply, id 5503, seq 2, length 64
-IP 10.10.10.10 > 10.10.30.30: ICMP echo request, id 5503, seq 3, length 64
-IP 10.10.30.30 > 10.10.10.10: ICMP echo reply, id 5503, seq 3, length 64
-IP 10.10.10.10 > 10.10.30.30: ICMP echo request, id 5503, seq 4, length 64
-IP 10.10.30.30 > 10.10.10.10: ICMP echo reply, id 5503, seq 4, length 64
-```
-
-Вывод tcpdump на `eth1` машины **two** пуст:
-
-```console
-[vagrant@two ~]$ sudo tcpdump -nnt -i eth1 icmp
-tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
-listening on eth1, link-type EN10MB (Ethernet), capture size 262144 bytes
-^C
-0 packets captured
-0 packets received by filter
-0 packets dropped by kernel
-```
+    --- 10.10.10.1 ping statistics ---
+    4 packets transmitted, 4 received, 0% packet loss, time 3014ms
+    rtt min/avg/max/mdev = 0.606/0.792/0.916/0.114 ms
+    ```
 
 <br/>
 

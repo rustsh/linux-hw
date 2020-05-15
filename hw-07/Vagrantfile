@@ -4,6 +4,9 @@
 Vagrant.configure("2") do |config|
   config.vm.box = "centos/7"
   config.vm.network "private_network", ip: "192.168.33.10"
-  config.vm.provision "shell", path: "rpm.sh"
-  config.vm.provision "shell", path: "repo.sh"
+  # Each provisioner for exact task
+  config.vm.provision "first", type: "shell", path: "startup-scripts/first-task.sh"
+  config.vm.provision "second", type: "shell", path: "startup-scripts/second-task.sh"
+  config.vm.provision "third", type: "shell", path: "startup-scripts/third-task.sh"
+  config.vm.provision "star", type: "shell", path: "startup-scripts/star-task.sh"
 end

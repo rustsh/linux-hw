@@ -1,29 +1,25 @@
 ---
-- name: Initial network settings
+- name: Config routing
   hosts: all
   roles:
-    - init_net
+    - route
 
-- name: Config vlan1
-  hosts: testServer1, testClient1
-  vars:
-    vlan_number: 1
+- name: Config server for knocking port
+  hosts: inetRouter
   roles:
-    - vlan
+    - knock_server
 
-- name: Config vlan2
-  hosts: testServer2, testClient2
-  vars:
-    vlan_number: 2
-  roles:
-    - vlan
-
-- name: Config vlan on router
+- name: Copy script for knocking port to centralRouter
   hosts: centralRouter
   roles:
-    - vlan
+    - knock_client
 
-- name: Config teaming
-  hosts: inetRouter, centralRouter
+- name: Install Nginx on centralServer
+  hosts: centralServer
   roles:
-    - team
+    - nginx
+
+- name: Set forwarding from inetRouter2 to centralServer
+  hosts: inetRouter2
+  roles:
+    - forward

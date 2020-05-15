@@ -1,295 +1,482 @@
-## Домашнее задание к занятию № 19 — «LDAP. Централизованная авторизация и аутентификация»    <!-- omit in toc -->
+## Домашнее задание к занятию № 19 — «Архитектура сетей»    <!-- omit in toc -->
 
 ### Оглавление  <!-- omit in toc -->
 
 - [Задание](#Задание)
 - [Описание работы](#Описание-работы)
-  - [Настройка сервера](#Настройка-сервера)
-  - [Настройка клиента](#Настройка-клиента)
-  - [Добавление пользователя](#Добавление-пользователя)
 - [Проверка работы](#Проверка-работы)
-  - [Проверка работы файрвола](#Проверка-работы-файрвола)
-  - [Проверка настройки хостов](#Проверка-настройки-хостов)
-  - [Проверка подключения пользователя по SSH](#Проверка-подключения-пользователя-по-ssh)
-  - [Проверка работы FreeIPA в веб-интерфейсе](#Проверка-работы-freeipa-в-веб-интерфейсе)
+- [Теоретическая часть](#Теоретическая-часть)
+  - [Подсети](#Подсети)
+  - [Ошибки при разбиении](#Ошибки-при-разбиении)
 
 ### Задание
 
-1. Установить FreeIPA.
-2. Написать Ansible-плейбук для конфигурации клиента.
-3. Настроить аутентификацию по SSH-ключам. (*)
-4. Файрвол должен быть включён на сервере и на клиенте. (**)
+#### Дано  <!-- omit in toc -->
+
+По ссылке https://github.com/erlong15/otus-linux/tree/network (ветка network) находится Vagrantfile с начальным построением сети:
+- inetRouter;
+- centralRouter;
+- centralServer.
+
+#### Планируемая архитектура  <!-- omit in toc -->
+
+Необходимо построить следующую архитектуру.
+
+Сеть office1:
+- 192.168.2.0/26 — dev;
+- 192.168.2.64/26 — test servers;
+- 192.168.2.128/26 — managers;
+- 192.168.2.192/26 — office hardware.
+
+Сеть office2:
+- 192.168.1.0/25 — dev;
+- 192.168.1.128/26 — test servers;
+- 192.168.1.192/26 — office hardware.
+
+Сеть central:
+- 192.168.0.0/28 — directors;
+- 192.168.0.32/28 — office hardware;
+- 192.168.0.64/26 — wifi.
+
+```
+Office1 ---\
+            ---> Central ---> IRouter ---> Internet
+Office2 ---/
+```
+
+Таким образом, должны получиться следующие серверы:
+- inetRouter;
+- centralRouter;
+- office1Router;
+- office2Router;
+- centralServer;
+- office1Server;
+- office2Server.
+
+#### Теоретическая часть  <!-- omit in toc -->
+
+- Найти свободные подсети.
+- Посчитать, сколько узлов в каждой подсети, включая свободные.
+- Указать broadcast-адрес для каждой подсети.
+- Проверить, нет ли ошибок при разбиении.
+
+#### Практическая часть  <!-- omit in toc -->
+
+- Соединить офисы в сеть согласно схеме и настроить роутинг.
+- Все серверы и роутеры должны ходить в интернет через inetRouter.
+- Все серверы должны видеть друг друга.
+- У всех новых серверов отключить дефолт на NAT (eth0), который Vagrant поднимает для связи.
 
 ### Описание работы
 
-При выполнении команды `vagrant up` поднимаются две виртуальные машины — server и client ([Vagrantfile](Vagrantfile)), которые конфигурируются при помощи Ansible. Хостовые имена сразу задаются в виде FQDN (`ipa-server.otus.lan` и `client.otus.lan` соответственно).
+Для создания хостов используется Vagrant. В [Vagrantfile](Vagrantfile) описано создание интерфейсов с нужными сетевыми настройками. Для конфигурирования используется Ansible.
 
-Структура каталога:
-
-```console
-$ tree -L 3
-.
-├── ansible.cfg
-├── images
-│   ├── hosts.png
-│   ├── login.png
-│   ├── otus.png
-│   └── users.png
-├── provisioning
-│   ├── playbooks
-│   │   ├── start-client.yml
-│   │   └── start-server.yml
-│   └── roles
-│       ├── ipa-client
-│       ├── ipa-server
-│       └── ipa-user-add
-├── README.md
-└── Vagrantfile
-```
-
-#### Настройка сервера
-
-Плейбук для настройки сервера:
+[Плейбук](provisioning/start.yml) для предварительной настройки:
 
 ```yml
 ---
-- name: Provision IPA server
-  hosts: server
-  gather_facts: yes
+- name: Config routing
+  hosts: all
   roles:
-    - role: ipa-server
-      vars:
-        - dm_password: dmpassword
-        - admin_password: adminpassword
+    - route
 ```
 
-Для настройки сервера используется роль [ipa-server](provisioning/roles/ipa-server).
+Структура роли [route](provisioning/roles/route):
 
-1. Включается и конфигурируется файрвол: добавляются нужные для работы сервисы (dns, freeipa-ldap, freeipa-ldaps), после чего он перезапускается.
-2. При помощи утилиты authconfig в PAM добавляется правило для создания домашнего каталога при подключении по SSH:
-
-    ```console
-    authconfig --enablemkhomedir --update
-    ```
-
-3. В файл **/etc/hosts** добавляется строчка:
-
-    ```
-    192.168.33.10   ipa-server.otus.lan     ipa-server
-    ```
-
-    IP-адрес и доменное имя задаются в Vagrantfile, а Ansible берёт их из собранных фактов.
-
-4. Устанавливаются пакеты `ipa-server` и `ipa-server-dns`, а также обновляется пакет `nss` (без этого установка сервера IPA падает с ошибкой).
-5. В пакетном (неинтерактивном) режиме (т. е. с ключом `--unattended`) выполняется команда `ipa-server-install`. Все переменные для настройки задаются в файле [defaults/main.yml](provisioning/roles/ipa-server/defaults/main.yml) Ansible-роли [ipa-server](provisioning/roles/ipa-server), при этом пароли могут быть переопределены в плейбуке [start-server.yml](provisioning/playbooks/start-server.yml).
-
-    Также при установке используется ключ вида `--subject-base="O=OTUS.LAN 1585658548"`, где `1585658548` — временная метка. Без этого при удалении и новой установке сервера IPA будет создан другой сертификат с тем же именем, что приведёт к ошибке `SEC_ERROR_REUSED_ISSUER_AND_SERIAL` при попытке повторно зайти в веб-интерфейс через браузер после переустановки сервера.
-
-#### Настройка клиента
-
-Плейбук для настройки клиента и добавления пользователя:
-
-```yml
----
-- name: Provision IPA client
-  hosts: client
-  gather_facts: yes
-  vars:
-    - admin_password: adminpassword
-    - server_ip: 192.168.33.10
-  roles:
-    - role: ipa-client
-    - role: ipa-user-add
-      vars:
-        - user_login: otus
-        - user_name: John
-        - user_surname: Doe
+```
+route/
+├── defaults
+│   └── main.yml
+├── files
+│   └── forwarding.conf
+├── handlers
+│   └── main.yml
+├── tasks
+│   ├── default_route.yml
+│   ├── iptables.yml
+│   ├── main.yml
+│   └── no_nm.yml
+└── templates
+    ├── centralRouter
+    │   ├── route-eth1.j2
+    │   └── route-eth5.j2
+    ├── centralServer
+    │   └── route-eth1.j2
+    ├── inetRouter
+    │   └── route-eth1.j2
+    ├── office1Router
+    │   └── route-eth1.j2
+    ├── office1Server
+    │   └── route-eth1.j2
+    ├── office2Router
+    │   └── route-eth1.j2
+    ├── office2Server
+    │   └── route-eth1.j2
+    └── network.j2
 ```
 
-Для настройки клиента используется роль [ipa-client](provisioning/roles/ipa-client).
+При запуске плейбука [start.yml](provisioning/start.yml) выполняются следующие шаги:
 
-1. Включается файрвол.
-2. При помощи утилиты authconfig в PAM добавляется правило для создания домашнего каталога при подключении по SSH:
+1. Устанавливается tcpdump.
+2. На хосте inetRouter настраивается iptables:
 
-    ```console
-    authconfig --enablemkhomedir --update
+   - устанавливается пакет iptables-services;
+   - запускается сервис iptables;
+   - добавляется правило для маскарадинга исходящих пакетов:
+
+        ```console
+        iptables -t nat -A POSTROUTING ! -d 192.168.0.0/16 -o eth0 -j MASQUERADE
+        ```
+
+   - удаляются все правила из таблицы filter:
+
+        ```console
+        iptables -F
+        ```
+
+   - конфигурация iptables сохраняется для работы после перезагрузки сервера:
+
+        ```console
+        service iptables save
+        ```
+
+3. В директорию **/etc/sysconfig** копируется файл [network](provisioning/roles/route/templates/network.j2), в котором:
+
+   - явно указано использование сети:
+
+        ```ini
+        NETWORKING=yes
+        ```
+
+   - указано имя хоста (специфично для каждого сервера):
+
+        ```ini
+        HOSTNAME=inetRouter
+        ```
+
+   - отключаются маршруты ZEROCONF (маршруты для сети 169.254.0.0/16):
+
+        ```ini
+        NOZEROCONF=yes
+        ```
+
+4. На роутерах включается форвардинг пакетов: в каталог **/etc/sysctl.d** добавляется файл [forwarding.conf](provisioning/roles/route/files/forwarding.conf), содержащий следующую строку:
+
+    ```ini
+    net.ipv4.conf.all.forwarding = 1
     ```
 
-3. Файл **/etc/resolv.conf** приводится к виду:
+5. На всех хостах, кроме inetRouter, на интерфейсе `eth0` отключается маршрут default: выполняется команда `ip route del default`, в файл **/etc/sysconfig/network-scripts/ifcfg-eth0** добавляется параметр `DEFROUTE=no`.
+6. На всех хостах, кроме inetRouter, на интерфейсе `eth1` назначается шлюз: в файл **/etc/sysconfig/network-scripts/ifcfg-eth1** добавляется параметр вида `GATEWAY=192.168.0.1`. Адреса шлюзов для каждой сети и для каждого хоста прописаны в файле [defaults/main.yml](provisioning/roles/route/defaults/main.yml) роли [route](provisioning/roles/route).
+7. Настраивается маршрутизация:
 
-    ```
-    nameserver 192.163.33.10
-    domain otus.lan
-    ```
+   - на каждый хост в каталог **/etc/sysconfig/network-scripts** копируется файл **route-eth1** с прописанными в нём маршрутами:
 
-    IP — адрес сервера, задаётся в переменной в [defaults/main.yml](provisioning/roles/ipa-client/defaults/main.yml) Ansible-роли [ipa-client](provisioning/roles/ipa-client) и может быть переопределён в плейбуке [start-client.yml](provisioning/playbooks/start-client.yml). Доменное имя Ansible берёт из собранных фактов.
+     - на всех хостах, кроме inetRouter, в файле **route-eth1** прописан только маршрут по умочанию до вышестоящего роутера, то есть строка вида:
 
-4. Устанавливается пакет `ipa-client`.
-5. В пакетном (неинтерактивном) режиме (т. е. с ключом `--unattended`) выполняется команда `ipa-client-install`. Пароль для пользователя admin задаётся в файле [defaults/main.yml](provisioning/roles/ipa-client/defaults/main.yml) Ansible-роли [ipa-client](provisioning/roles/ipa-client) и может быть переопределён в плейбуке [start-client.yml](provisioning/playbooks/start-client.yml) в соответствии с паролем, заданным для этого пользователя при установке сервера.
+        ```
+        default via 192.168.0.1
+        ```
 
-#### Добавление пользователя
+     - на хосте inetRouter в файле **route-eth1** прописаны маршруты до внутренних сетей через centralRouter:
 
-Для добавления пользователя используется роль [ipa-user-add](provisioning/roles/ipa-user-add).
+        ```
+        192.168.254.0/28 via 192.168.255.2
+        192.168.0.0/28 via 192.168.255.2
+        192.168.2.0/26 via 192.168.255.2
+        192.168.1.0/25 via 192.168.255.2
+        ```
 
-1. На клиенте создаётся пользователь otus без пароля, для него генерируется пара SSH-ключей.
-2. Запрашивается тикет Kerberos для пользователя admin:
+   - на хост centralRouter дополнительно копируется файл **route-eth5**, так как он связан с офисными роутерами через интерфейс `eth5`. В файле прописаны маршруты до сетей office1 и office2 через офисные роутеры:
 
-    ```console
-    echo -n adminpassword | kinit admin
-    ```
+        ```
+        192.168.2.0/26 via 192.168.254.2
+        192.168.1.0/25 via 192.168.254.3
+        ```
 
-3. Выполняется команда `ipa user-add` для добавления пользователя otus в домен. Для того чтобы скопировать его публичный SSH-ключ на сервер IPA, используется ключ `--sshpubkey="$(cat /home/otus/.ssh/id_rsa.pub)"`.
+8. После поднятия хостов сервис network находится в статусе `failed` c ошибкой `Connection activation failed: No suitable device found for this connection` для интерфейса `eth0` из-за NetworkManager. При выполнении команды `systemctl restart network` сервис network запускается, но маршруты из файлов **route-eth\*** не подтягиваются. Чтобы избежать этого, сервиc network запускается отдельной командой (после чего рестарт работает нормально).
+9. Отключается сервис NetworkManager, так как, во-первых, сеть настраивается вручную, а во-вторых, он приводит к ошибке, описанной в предыдущем пункте (ошибка повторяется при перезагрузке сервера). Кроме того, во всех файлах **/etc/sysconfig/network-scripts/ifcfg-eth\*** указывается параметр `NM_CONTROLLED=no`, отключающий управление интерфейсом посредством NetworkManager.
+
+10. После внесения всех изменений перезапускается сервис network.
+
+Итоговая конфигурация выглядит следующим образом:
+
+![](images/net_scheme.png)
 
 ### Проверка работы
 
-Чтобы создать и сконфигурировать все машины, достаточно выполнить команду `vagrant up`.
+Чтобы создать и сконфигурировать все машины и сеть, достаточно выполнить команду `vagrant up`.
 
-#### Проверка работы файрвола
+1. Проверим настройку маршрутизации:
 
-1. Подключиться к серверу:
-
-    ```console
-    $ vagrant ssh server
-    ```
-
-2. Залогиниться под пользователем root:
+    На centralServer:
 
     ```console
-    [vagrant@ipa-server ~]$ sudo -i
+    [vagrant@centralServer ~]$ ip r
+    default via 192.168.0.1 dev eth1 
+    10.0.2.0/24 dev eth0 proto kernel scope link src 10.0.2.15 
+    192.168.0.0/28 dev eth1 proto kernel scope link src 192.168.0.2
     ```
 
-3. Убедиться, что файрвол работает:
+    На centralRouter:
 
     ```console
-    [root@ipa-server ~]# firewall-cmd --state
-    running
+    [vagrant@centralRouter ~]$ ip r
+    default via 192.168.255.1 dev eth1 
+    10.0.2.0/24 dev eth0 proto kernel scope link src 10.0.2.15 
+    192.168.0.0/28 dev eth2 proto kernel scope link src 192.168.0.1 
+    192.168.0.32/28 dev eth3 proto kernel scope link src 192.168.0.33 
+    192.168.0.64/26 dev eth4 proto kernel scope link src 192.168.0.65 
+    192.168.1.0/25 via 192.168.254.3 dev eth5 
+    192.168.2.0/26 via 192.168.254.2 dev eth5 
+    192.168.254.0/28 dev eth5 proto kernel scope link src 192.168.254.1 
+    192.168.255.0/30 dev eth1 proto kernel scope link src 192.168.255.2
     ```
 
-4. Проверить, какие службы добавлены в правила файрвола:
+    На inetRouter:
 
     ```console
-    [root@ipa-server ~]# firewall-cmd --list-services 
-    ssh dhcpv6-client dns freeipa-ldap freeipa-ldaps
+    [vagrant@inetRouter ~]$ ip r
+    default via 10.0.2.2 dev eth0 
+    10.0.2.0/24 dev eth0 proto kernel scope link src 10.0.2.15 
+    192.168.0.0/28 via 192.168.255.2 dev eth1 
+    192.168.1.0/25 via 192.168.255.2 dev eth1 
+    192.168.2.0/26 via 192.168.255.2 dev eth1 
+    192.168.254.0/28 via 192.168.255.2 dev eth1 
+    192.168.255.0/30 dev eth1 proto kernel scope link src 192.168.255.1
     ```
 
-#### Проверка настройки хостов
+2. Проверим, что узлы сети видят друг друга.
 
-1. Подключиться к клиенту:
+    Ping от office2Server до centralServer:
 
     ```console
-    $ vagrant ssh client
+    [vagrant@office2Server ~]$ ping -c4 192.168.255.2
+    PING 192.168.255.2 (192.168.255.2) 56(84) bytes of data.
+    64 bytes from 192.168.255.2: icmp_seq=1 ttl=63 time=1.43 ms
+    64 bytes from 192.168.255.2: icmp_seq=2 ttl=63 time=1.65 ms
+    64 bytes from 192.168.255.2: icmp_seq=3 ttl=63 time=1.56 ms
+    64 bytes from 192.168.255.2: icmp_seq=4 ttl=63 time=1.40 ms
+
+    --- 192.168.255.2 ping statistics ---
+    4 packets transmitted, 4 received, 0% packet loss, time 3006ms
+    rtt min/avg/max/mdev = 1.404/1.515/1.655/0.111 ms
     ```
 
-2. Залогиниться под пользователем root:
+    Ping от inetRouter до office1Router:
 
     ```console
-    [vagrant@client ~]$ sudo -i
+    [vagrant@inetRouter ~]$ ping -c4 192.168.254.2
+    PING 192.168.254.2 (192.168.254.2) 56(84) bytes of data.
+    64 bytes from 192.168.254.2: icmp_seq=1 ttl=63 time=5.87 ms
+    64 bytes from 192.168.254.2: icmp_seq=2 ttl=63 time=1.66 ms
+    64 bytes from 192.168.254.2: icmp_seq=3 ttl=63 time=1.60 ms
+    64 bytes from 192.168.254.2: icmp_seq=4 ttl=63 time=1.69 ms
+
+    --- 192.168.254.2 ping statistics ---
+    4 packets transmitted, 4 received, 0% packet loss, time 3005ms
+    rtt min/avg/max/mdev = 1.602/2.708/5.873/1.827 ms
     ```
 
-3. Проверить список тикетов в кэше:
+3. Проверим, что серверы имеют доступ в интернет через inetRouter.
+
+    Для этого откроем в разных терминалах inetRouter и любой другой узел, например, office1Server.
+
+    На inetRouter запустим tcpdump (если не указать интерфейс, то по умолчанию будет использован интерфейс с минимальным номером, то есть `eth0`):
+    
+    ```console
+    [vagrant@inetRouter ~]$ sudo tcpdump -nnt -i any host 192.168.2.2
+    tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+    listening on any, link-type LINUX_SLL (Linux cooked), capture size 262144 bytes
+    ```
+
+    На втором хосте запросим интернет-страницу:
 
     ```console
-    [root@client ~]# klist
-    Ticket cache: KEYRING:persistent:0:0
-    Default principal: admin@OTUS.LAN
-
-    Valid starting       Expires              Service principal
-    03/31/2020 12:19:55  04/01/2020 12:19:55  HTTP/ipa-server.otus.lan@OTUS.LAN
-    03/31/2020 12:19:55  04/01/2020 12:19:55  krbtgt/OTUS.LAN@OTUS.LAN
+    [vagrant@office1Server ~]$ curl -L google.com
     ```
 
-4. Просмотреть информацию о пользователях:
+    Проверим вывод tcpdump на inetRouter:
 
     ```console
-    [root@client ~]# ipa user-find
-    ---------------
-    2 users matched
-    ---------------
-    User login: admin
-    Last name: Administrator
-    Home directory: /home/admin
-    Login shell: /bin/bash
-    Principal alias: admin@OTUS.LAN
-    UID: 1684800000
-    GID: 1684800000
-    Account disabled: False
+    IP 192.168.2.2.33102 > 64.233.164.102.80: Flags [S], seq 1472322177, win 29200, options [mss 1460,sackOK,TS val 1186370 ecr 0,nop,wscale 6], length 0
+    IP 64.233.164.102.80 > 192.168.2.2.33102: Flags [S.], seq 246400001, ack 1472322178, win 65535, options [mss 1460], length 0
+    IP 192.168.2.2.33102 > 64.233.164.102.80: Flags [.], ack 1, win 29200, length 0
+    IP 192.168.2.2.33102 > 64.233.164.102.80: Flags [P.], seq 1:75, ack 1, win 29200, length 74: HTTP: GET / HTTP/1.1
+    IP 64.233.164.102.80 > 192.168.2.2.33102: Flags [.], ack 75, win 65535, length 0
+    IP 64.233.164.102.80 > 192.168.2.2.33102: Flags [P.], seq 1:529, ack 75, win 65535, length 528: HTTP: HTTP/1.1 301 Moved Permanently
+    IP 192.168.2.2.33102 > 64.233.164.102.80: Flags [.], ack 529, win 30016, length 0
+    IP 192.168.2.2.48338 > 64.233.162.106.80: Flags [S], seq 2533686022, win 29200, options [mss 1460,sackOK,TS val 1186522 ecr 0,nop,wscale 6], length 0
+    IP 64.233.162.106.80 > 192.168.2.2.48338: Flags [S.], seq 246464001, ack 2533686023, win 65535, options [mss 1460], length 0
+    IP 192.168.2.2.48338 > 64.233.162.106.80: Flags [.], ack 1, win 29200, length 0
+    IP 192.168.2.2.48338 > 64.233.162.106.80: Flags [P.], seq 1:79, ack 1, win 29200, length 78: HTTP: GET / HTTP/1.1
+    IP 64.233.162.106.80 > 192.168.2.2.48338: Flags [.], ack 79, win 65535, length 0
+    IP 64.233.162.106.80 > 192.168.2.2.48338: Flags [.], seq 1:2841, ack 79, win 65535, length 2840: HTTP: HTTP/1.1 200 OK
+    ...
+    ``` 
 
-    User login: otus
-    First name: John
-    Last name: Doe
-    Home directory: /home/otus
-    Login shell: /bin/bash
-    Principal name: otus@OTUS.LAN
-    Principal alias: otus@OTUS.LAN
-    Email address: otus@otus.lan
-    UID: 1684800001
-    GID: 1684800001
-    SSH public key fingerprint: SHA256:eEG21yV6vyNCuTpP/jDkMlfJC708WINPYHq1mBTqqOM ansible-generated on client.otus.lan (ssh-rsa)
-    Account disabled: False
-    ----------------------------
-    Number of entries returned 2
-    ----------------------------
-    ```
-
-#### Проверка подключения пользователя по SSH
-
-1. Подключиться к клиенту:
+    Другой способ: выключить inetRouter (например, выполнив на хостовой машине команду `vagrant suspend inetRouter`) и проверить доступ к интернету на любом узле:
 
     ```console
-    $ vagrant ssh client
+    [vagrant@office1Server ~]$ ping -c4 google.com
+    PING google.com (64.233.164.139) 56(84) bytes of data.
+
+    --- google.com ping statistics ---
+    4 packets transmitted, 0 received, 100% packet loss, time 2999ms
     ```
 
-2. Залогиниться под пользователем otus:
+    После запуска inetRouter (команда `vagrant resume inetRouter`):
 
     ```console
-    [vagrant@client ~]$ sudo su - otus
+    [vagrant@office1Server ~]$ ping -c4 google.com
+    PING google.com (64.233.164.101) 56(84) bytes of data.
+    64 bytes from google.com (64.233.164.101): icmp_seq=1 ttl=57 time=715 ms
+    64 bytes from google.com (64.233.164.101): icmp_seq=2 ttl=57 time=88.7 ms
+    64 bytes from google.com (64.233.164.101): icmp_seq=3 ttl=57 time=70.7 ms
+    64 bytes from google.com (64.233.164.101): icmp_seq=4 ttl=57 time=70.2 ms
+
+    --- google.com ping statistics ---
+    4 packets transmitted, 4 received, 0% packet loss, time 3002ms
+    rtt min/avg/max/mdev = 70.203/236.340/715.600/276.801 ms
     ```
 
-3. Подключиться к серверу по SSH:
+### Теоретическая часть
 
-    ```console
-    [otus@client ~]$ ssh otus@192.168.33.10
-    The authenticity of host '192.168.33.10 (<no hostip for proxy command>)' can't be established.
-    ECDSA key fingerprint is SHA256:hTXj1eCNZrGackN6eM3II5YV/iWzuqcFNs/7RxYnPOM.
-    ECDSA key fingerprint is MD5:bc:a5:b1:1f:dd:70:50:9a:9d:ec:b6:b8:ba:ea:48:ee.
-    Are you sure you want to continue connecting (yes/no)? yes
-    Warning: Permanently added '192.168.33.10' (ECDSA) to the list of known hosts.
-    Creating home directory for otus.
-    [otus@ipa-server ~]$ hostname
-    ipa-server.otus.lan 
-    ```
+#### Подсети
 
-    Подключение прошло успешно, хотя публичный ключ не был скопирован на хост обычными средствами (например, при помощи команды `ssh-copy-id`). Также на сервере при подключении был создан домашний каталог для пользователя otus:
+##### Сеть central  <!-- omit in toc -->
 
-    ```console
-    [otus@ipa-server ~]$ pwd
-    /home/otus
-    ```
+Существующие подсети:
 
-#### Проверка работы FreeIPA в веб-интерфейсе
+- 192.168.0.0/28 — directors
+  - количество хостов: 14
+  - broadcast: 192.168.0.15
 
-1. На локальной машине добавить в файл **/etc/hosts** строку:
+- 192.168.0.32/28 — office hardware
+  - количество хостов: 14
+  - broadcast: 192.168.0.47
 
-    ```
-    192.168.33.10 ipa-server.otus.lan
-    ```
+- 192.168.0.64/26 — wifi
+  - количество хостов: 62
+  - broadcast: 192.168.0.127
 
-2. В браузере перейти на страницу http://192.168.33.10/. Должен произойти редирект на https://ipa-server.otus.lan/ipa/ui/ со страницей для входа во FreeIPA:
+Свободные подсети:
 
-    ![](images/login.png)
+- 192.168.0.16/28
+  - количество хостов: 14
+  - broadcast: 192.168.0.31
 
-3. Залогиниться, используя имя и пароль администратора (в данной работе это `admin` и `adminpassword`).
-4. На вкладке Hosts проверить, какие хосты включены в домен. Убедиться, что в списке есть client.otus.lan:
+- 192.168.0.48/28
+  - количество хостов: 14
+  - broadcast: 192.168.0.63
 
-    ![](images/hosts.png)
+- 192.168.0.128/25
+  - количество хостов: 126
+  - broadcast: 192.168.0.255
 
-5. На вкладке Users проверить, какие пользователи включены в домен. Убедиться, что в списке есть otus:
+##### Сеть office1  <!-- omit in toc -->
 
-    ![](images/users.png)
+Существующие подсети:
 
-6. Перейти в настройки пользователя otus и проверить информацию о нём:
+- 192.168.2.0/26 — dev
+  - количество хостов: 62
+  - broadcast: 192.168.2.63
 
-    ![](images/otus.png)
+- 192.168.2.64/26 — test servers
+  - количество хостов: 62
+  - broadcast: 192.168.2.127
+
+- 192.168.2.128/26 — managers
+  - количество хостов: 62
+  - broadcast: 192.168.2.191
+
+- 192.168.2.192/26 — office hardware
+  - количество хостов: 62
+  - broadcast: 192.168.2.255
+
+Свободных подсетей нет.
+
+##### Сеть office2  <!-- omit in toc -->
+
+Существующие подсети:
+
+- 192.168.1.0/25 — dev
+  - количество хостов: 126
+  - broadcast: 192.168.1.127
+
+- 192.168.1.128/26 — test servers
+  - количество хостов: 62
+  - broadcast: 192.168.1.191
+
+- 192.168.1.192/26 — office hardware
+  - количество хостов: 62
+  - broadcast: 192.168.1.255
+
+Свободных подсетей нет.
+
+##### Сеть для объединения офисных роутеров  <!-- omit in toc -->
+
+Существующая подсеть:
+
+- 192.168.254.0/28 — router-lan
+  - количество хостов: 14
+  - broadcast: 192.168.254.15
+
+Свободные подсети:
+
+- 192.168.254.16/28
+  - количество хостов: 14
+  - broadcast: 192.168.254.31
+
+- 192.168.254.32/27
+  - количество хостов: 30
+  - broadcast: 192.168.254.63
+
+- 192.168.254.64/26
+  - количество хостов: 62
+  - broadcast: 192.168.254.127
+
+- 192.168.254.128/25
+  - количество хостов: 126
+  - broadcast: 192.168.254.255
+
+##### Сеть для объединения centralRouter и inetRouter  <!-- omit in toc -->
+
+Существующая подсеть:
+
+- 192.168.255.0/30  — router-www
+  - количество хостов: 2
+  - broadcast: 192.168.255.3
+
+Свободные подсети:
+
+- 192.168.255.4/30
+  - количество хостов: 2
+  - broadcast: 192.168.255.7
+
+- 192.168.255.8/29
+  - количество хостов: 6
+  - broadcast: 192.168.255.15
+
+- 192.168.255.16/28
+  - количество хостов: 14
+  - broadcast: 192.168.255.31
+
+- 192.168.255.32/27
+  - количество хостов: 30
+  - broadcast: 192.168.255.63
+
+- 192.168.255.64/26
+  - количество хостов: 62
+  - broadcast: 192.168.255.127
+
+- 192.168.255.128/25
+  - количество хостов: 126
+  - broadcast: 192.168.255.255
+
+#### Ошибки при разбиении
+
+В сети central для подсети office hardware следует выделить диапазон 192.168.0.16/28 (а не 192.168.0.32/28) — тогда будет доступен более крупный сегмент 192.168.0.32/27.
 
 <br/>
 

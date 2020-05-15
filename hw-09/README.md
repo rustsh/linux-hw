@@ -1,120 +1,76 @@
-## Домашнее задание к занятию № 9 — «Docker»    <!-- omit in toc -->
+## Домашнее задание к занятию № 9 — «Пользователи и группы. Авторизация и аутентификация»    <!-- omit in toc -->
 
 ### Оглавление  <!-- omit in toc -->
 
 - [Задание](#Задание)
-- [Что сделано](#Что-сделано)
-- [Как проверить](#Как-проверить)
+- [Описание работы](#Описание-работы)
+- [Проверка](#Проверка)
 
 ### Задание
 
-Создать кастомные образы Nginx и PHP, объединить их в Docker Compose. После запуска Nginx должен показывать PHP Info. Все собранные образы должны быть в Docker Hub (задание со звездой).
+Используя PAM, запретить всем пользователям, кроме группы admin, логин в выходные (суббота и воскресенье) без учёта праздников.
 
-### Что сделано
+### Описание работы
 
-1. Установлены docker и docker-compose.
-2. Создан [Dockerfile](nginx/Dockerfile) для Nginx:
+При выполнении команды `vagrant up` поднимается виртуальная машина с CentOS 7 и запускается скрипт предварительной настройки [start.sh](start.sh), в ходе выполнения которого:
 
-    ```dockerfile
-    FROM alpine:latest
-    RUN apk update && apk add --no-cache nginx && \
-        ln -s /dev/stdout /var/log/nginx/access.log && \ 
-        ln -s /dev/stderr /var/log/nginx/error.log && \
-        mkdir -p /run/nginx
-    CMD ["nginx", "-g", "daemon off;"]
+1. Создаются новые пользователи **first** и **second**, им назначаются пароли.
+2. Создаётся группа **admin**, в неё добавляется один из новых пользователей (**first**), а также пользователь **vagrant** (чтобы не терять контроль над машиной).
+3. В файле конфигурации SSH включается вход по паролю.
+4. В директорию **/usr/local/bin/** копируется и делается исполняемым файл [check_login.sh](check_login.sh), который является скриптом проверки.
+5. В файл сценария PAM для sshd (**/etc/pam.d/sshd**) включается использование модуля pam_exec.so с полным путём до скрипта проверки в качестве параметра.
+
+Скрипт проверки [check_login.sh](check_login.sh) пробегает по всем группам заданного пользователя, и если там нет группы **admin**, то вычисляет, какой сегодня день недели. Если это выходные (суббота или воскресение), то он возвращает 1 (запрет доступа), иначе 0:
+
+```bash
+#!/usr/bin/env bash
+check=$(groups $PAM_USER | awk '{ for (k=3; k<=NF; k++) {if ($k=="admin") print $k } }')
+if [[ -z $check ]]
+then
+    if [[ $(date +%a) = "Sat" || $(date +%a) = "Sun" ]]
+    then
+        exit 1
+    else
+        exit 0
+    fi
+fi
+```
+
+### Проверка
+
+1. Подставить в скрипт [check_login.sh](check_login.sh) текущий день недели (если сегодня будний день).
+2. Создать виртуальную машину, выполнив команду `vagrant up`.
+3. Подключиться к ней по SSH, используя логин **first**, и убедиться, что доступ есть:
+
+    ```console
+    $ ssh first@192.168.33.10
+    first@192.168.33.10's password: 
+    [first@localhost ~]$ whoami
+    first
     ```
 
-3. Создан [Dockerfile](php-fpm/Dockerfile) для PHP-FPM:
+    IP-адрес задаётся в [Vagrantfile](Vagrantfile), пароль — в [файле предварительной настройки](start.sh) (в данной работе это `Qwerty123`).
 
-    ```dockerfile
-    FROM alpine:latest
-    RUN apk update && apk add --no-cache php7 php7-fpm && \
-        ln -s /dev/stderr /var/log/php7/error.log && \
-        sed -i 's/listen = 127.0.0.1:9000/listen = 9000/' /etc/php7/php-fpm.d/www.conf
-    CMD ["php-fpm7", "-F"]
+4. Подключиться к виртуальной машине по SSH, используя логин **second**, и убедиться, что доступ запрещён:
+
+    ```console
+    $ ssh second@192.168.33.10
+    second@192.168.33.10's password: 
+    /usr/local/bin/check_login.sh failed: exit code 1
+    Connection closed by 192.168.33.10 port 22
+    $
     ```
 
-4. На основе этих файлов при помощи команды `docker build` созданы образы **rustsh/otus-nginx** и **rustsh/otus-php-fpm**.
-5. Созданные образы загружены в Docker Hub при помощи команды `docker push`.
-6. Созданы файлы:
+5. Зайти в виртуальную машину при помощи команды `vagrant ssh` и удалить из скрипта **/usr/local/bin/check_login.sh** текущий день недели.
+6. Ещё раз подключиться к виртуальной машине по SSH с логином **second**. Доступ должен появиться:
 
-   - [default.conf](nginx/default.conf) — файл конфигурации Nginx, в котором настроено подключение PHP-FPM:
-        
-     ```nginx
-     server {
-         listen 80;
-
-         root /var/www/html;
-         index info.php;
-
-         location / {
-             try_files $uri $uri/ /info.php?$query_string;
-         }
-
-         location ~ \.php$ {
-             try_files $uri =404;
-             fastcgi_split_path_info ^(.+\.php)(/.+)$;
-             fastcgi_pass php-fpm:9000;
-             fastcgi_index info.php;
-             include fastcgi_params;
-             fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-             fastcgi_param PATH_INFO $fastcgi_path_info;
-         }
-     }
-     ```
-
-   - [info.php](info.php) — скрипт вывода PHP Info:
-
-     ```php
-     <?php
-     phpinfo();
-     ?>
-     ```
-
-7. Создан файл [docker-compose.yml](docker-compose.yml), при помощи которого на основе собранных образов поднимаются контейнеры с Nginx и PHP, объединённые сетью, в них прокидываются файлы [default.conf](nginx/default.conf) и [info.php](info.php), а порт из контейнера с Nginx пробрасывается наружу:
-
-    ```yml
-    version: '3'
-    services:
-      nginx:
-        image: rustsh/otus-nginx:1.0
-        container_name: otus-nginx
-        ports:
-          - "8080:80"
-        volumes:
-          - ./info.php:/var/www/html/info.php
-          - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
-        depends_on:
-          - php-fpm
-        networks:
-          - nginx-php
-      
-      php-fpm:
-        image: rustsh/otus-php-fpm:1.0
-        container_name: otus-php-fpm
-        volumes:
-          - ./info.php:/var/www/html/info.php
-        networks:
-          - nginx-php
-
-    networks:
-      nginx-php:
-    ```
-
-### Как проверить
-
-Собранные образы доступны в Docker Hub по ссылкам:
-
-- Nginx — https://hub.docker.com/repository/docker/rustsh/otus-nginx
-- PHP-FPM — https://hub.docker.com/repository/docker/rustsh/otus-php-fpm/
-
-Для локального запуска на машине должны быть установлены docker и docker-compose.
-
-В папке с файлом **docker-compose.yml** выполнить команду `docker-compose up -d`.
-
-Перейти в браузер, открыть страницу [localhost:8080](http://localhost:8080/) и убедиться, что выводится PHP Info:
-
-![](phpinfo.png)
+```console
+$ ssh second@192.168.33.10
+second@192.168.33.10's password: 
+Last failed login: Wed Mar  4 19:46:52 UTC 2020 from 192.168.33.1 on ssh:notty
+[second@localhost ~]$ whoami
+second
+```
 
 <br/>
 

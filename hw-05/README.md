@@ -1,445 +1,76 @@
-## Домашнее задание к занятию № 5 — «Инициализация системы. Systemd и SysV»    <!-- omit in toc -->
+## Домашнее задание к занятию № 5 — «Управление процессами»    <!-- omit in toc -->
 
-### Оглавление  <!-- omit in toc -->
+Задание: написать свою реализацию `ps ax`, используя анализ **/proc**.
 
-- [Предварительное описание](#Предварительное-описание)
-- [Задание 1. Сервис мониторинга](#Задание-1-Сервис-мониторинга)
-- [Задание 2. Переписать Init-скрипт на Unit-файл](#Задание-2-Переписать-init-скрипт-на-unit-файл)
-- [Задание 3. Разные конфигурационные файлы одного сервиса](#Задание-3-Разные-конфигурационные-файлы-одного-сервиса)
-- [Дополнительное задание](#Дополнительное-задание)
+Для выполнения задания написан скрипт [myps.sh](myps.sh)
 
-### Предварительное описание
+### Описание работы скрипта
 
-Для создания виртуальной машины используется [Vagrantfile](Vagrantfile) со следующим содержимым:
+Запоминается список каталогов в **/proc**, состоящий только из цифр — он является списком всех процессов:
 
-```ruby
-Vagrant.configure("2") do |config|
-  config.vm.box = "centos/7"
-  config.vm.network "private_network", ip: "192.168.33.10"
-  # Each provisioner for exact task
-  config.vm.provision "first", type: "shell", path: "startup-scripts/first-task.sh"
-  config.vm.provision "second", type: "shell", path: "startup-scripts/second-task.sh"
-  config.vm.provision "third", type: "shell", path: "startup-scripts/third-task.sh"
-  config.vm.provision "star", type: "shell", path: "startup-scripts/star-task.sh"
-end
+```bash
+procList=$(ls /proc | egrep '^[0-9]+$')
 ```
 
-Для каждого задания написан свой скрипт предварительной настройки (provision) для раздельного запуска. Например, чтобы выполнить и проверить только второе задание, нужно запустить виртуальную машину следующей командой:
+Для каждого процесса из списка (если этот процесс ещё существует) собираются данные:
+
+- **PID** — идентификатор процесса.
+    
+    Берётся из названия каталога.
+
+- **TTY** — терминал, с которым связан данный процесс.
+
+    Идентификатор терминала содержится в файле **stat** в десятичном формате. Далее он переводится в двоичный формат, из которого извлекаются старший (major) и младший (minor) номера. По этим номерам происходит поиск названия терминала сперва в **/dev/tty\***, а затем, в случае неудачи, в **/dev/pts/\***. Если терминал не найден или его идентификатор в **stat** равен нулю, возвращается вопросительный знак.
+
+- **STAT** — состояние, в котором на данный момент находится процесс.
+    
+    Содержится в файле **stat**, однако в данном скрипте извлекается из файла **status**, так как в нём содержится не только символ, но и его расшифровка.
+
+- **TIME** — процессорное время, занятое этим процессом.
+
+    Является суммой значений utime (время в режиме пользоваетеля) и stime (время в режиме ядра) из файла **stat**, которые измеряются в тиках (clock ticks). Число тиков в секунду в конктретной системе можно получить, выполнив команду `getconf CLK_TCK`. После этого процессорное время переводится в секунды и выводится в формате "mm:ss".
+
+- **COMMAND** — команда с аргументами, запустившая данный процесс.
+
+    Содержится в файле **cmdline**. Если файл **cmdline** пуст (например, если процесс превратился в зомби), то выводится имя исполняемого файла из файла **stat**.
+
+Вся полученная информация записывается в файл **result.log**.
+
+### Проверка работы скрипта
+
+Примеры вывода содержимого файла **result.log**:
 
 ```console
-$ vagrant up --provision-with second
+$ cat result.log | head
+PID     TTY     STAT            TIME    COMMAND
+1       ?       S (sleeping)    5:37    /sbin/init splash
+10      ?       S (sleeping)    0:03    [ksoftirqd/0]
+1000    ?       S (sleeping)    0:00    /lib/systemd/systemd-timesyncd
+1001    ?       S (sleeping)    0:04    /lib/systemd/systemd-resolved
+1009    ?       I (idle)        0:00    [kworker/0:0H-kblockd]
+1027    ?       S (sleeping)    0:00    /usr/sbin/rsyslogd -n
+1028    ?       S (sleeping)    0:10    /usr/sbin/thermald --no-daemon --dbus-enable
+1030    ?       S (sleeping)    0:00    /usr/sbin/cron -f
+1031    ?       S (sleeping)    0:08    /usr/sbin/irqbalance --foreground
 ```
 
-При использовании команды `vagrant up` без параметров будут выполнены все скрипты предварительной настройки.
-
-Скрипты предварительной настройки находятся в папке [startup-scripts](startup-scripts).
-
-Файлы для копирования находятся в папке [files](files) и разделены на подкаталоги по заданиям.
-
-Все файлы, содержащиеся в папке с Vagrantfile, при создании виртуальной машины копируются на неё в каталог **/vagrant**. Скрипты предварительной настройки работают именно с этим каталогом.
-
-### Задание 1. Сервис мониторинга
-
-Задание: написать сервис, который будет раз в 30 секунд мониторить лог на предмет наличия ключевого слова. Файл и слово должны задаваться в /etc/sysconfig.
-
-#### Запуск <!-- omit in toc -->
-
-При создании виртуальной машины запускается скрипт [**first-task.sh**](startup-scripts/first-task.sh), выполняющий следующие шаги:
-
-1. В каталог **/etc/sysconfig/** копируется файл [**watchlog**](files/first-task/watchlog) с опциями для сервиса мониторинга (ключевое слово и файл, который нужно мониторить):
-
-    ```ini
-    WORD="ALERT"
-    LOG=/var/log/watchlog.log
-    ```
-
-2. В каталог **/opt/** копируется файл [**watchlog.sh**](files/first-task/watchlog.sh), содержащий скрипт, который выполняет сервис:
-
-    ```bash
-    #!/bin/bash
-
-    WORD=$1
-    LOG=$2
-    DATE=`date`
-
-    if grep $WORD $LOG &> /dev/null
-    then
-        logger "$DATE: I found word, master!"
-    else
-        exit 0
-    fi
-    ```
-
-    Этот скрипт проверяет указанный файл на наличие ключего слова (с отключением вывода) и, если находит его, оставляет сообщение в файле **/var/log/messages**.
-
-3. В каталог **/etc/systemd/system/** копируются Unit-файлы самого сервиса [**watchlog.service**](files/first-task/watchlog.service) и его таймера [**watchlog.timer**](files/first-task/watchlog.timer).
-
-    Unit-файл сервиса:
-
-    ```ini
-    [Unit]
-    Description=My watchlog service
-
-    [Service]
-    Type=oneshot
-    EnvironmentFile=/etc/sysconfig/watchlog
-    ExecStart=/opt/watchlog.sh $WORD $LOG
-    ```
-    
-    Unit-файл таймера:
-
-    ```ini
-    [Unit]
-    Description=Run watchlog script every 30 second
-
-    [Timer]
-    # Запуск сервиса сразу после старта таймера
-    OnActiveSec=0
-    # Запуск сервиса каждые 30 секунд после его выполнения
-    OnUnitActiveSec=30
-
-    [Install]
-    WantedBy=multi-user.target
-    ```
-
-4. В каталоге **/var/log/** создаётся пустой файл **watchlog.log** — его будет мониторить сервис.
-5. Файлу **watchlog.sh** выдаются права на выполнение:
-   
-    ```bash
-    chmod +x /opt/watchlog.sh
-    ```
-
-6. Запускается таймер и включается его автозапуск:
-    
-    ```bash
-    systemctl start watchlog.timer
-    systemctl enable watchlog.timer
-    ```
-
-#### Проверка <!-- omit in toc -->
-
-1. Залогиниться на виртуальной машине командой `vagrant ssh`.
-2. Проверить, что таймер запущен:
-    
-    ```console
-    [vagrant@localhost ~]$ systemctl status watchlog.timer 
-    ● watchlog.timer - Run watchlog script every 30 second
-       Loaded: loaded (/etc/systemd/system/watchlog.timer; enabled; vendor preset: disabled)
-       Active: active (waiting) since Wed 2020-01-08 15:53:46 UTC; 3min 56s ago
-    ```
-
-3. Проверить, что сервис watchlog запускается каждые 30 секунд:
-    
-    ```console
-    [vagrant@localhost ~]$ watch -n 1 systemctl status watchlog
-    ```
-
-    ```console
-    Every 1.0s: systemctl status watchlog
-
-        watchlog.service - My watchlog service
-       Loaded: loaded (/etc/systemd/system/watchlog.service; static; vendor preset: disabled)
-       Active: inactive (dead) since Wed 2020-01-08 16:02:53 UTC; 22s ago
-      Process: 4961 ExecStart=/opt/watchlog.sh $WORD $LOG (code=exited, status=0/SUCCESS)
-     Main PID: 4961 (code=exited, status=0/SUCCESS)
-    ```
-
-4. Записать в файл **/var/log/watchlog.log** слово «ALERT»:
-
-    ```console
-    [vagrant@localhost ~]$ echo 'ALERT' | sudo tee -a /var/log/watchlog.log > /dev/null
-    ```
-
-5. Проверить файл **/var/log/messages**:
-
-    ```console
-    [vagrant@localhost ~]$ sudo tail -f /var/log/messages
-    ...
-    Jan  8 16:34:08 localhost systemd: Started My watchlog service.
-    Jan  8 16:35:02 localhost systemd: Starting My watchlog service...
-    Jan  8 16:35:02 localhost root: Wed Jan  8 16:35:02 UTC 2020: I found word, master!
-    Jan  8 16:35:02 localhost systemd: Started My watchlog service.
-    ...
-    ```
-
-### Задание 2. Переписать Init-скрипт на Unit-файл
-
-Задание: из epel установить spawn-fcgi и переписать Init-скрипт на Unit-файл. Имя сервиса должно называться так же.
-
-#### Запуск <!-- omit in toc -->
-
-При создании виртуальной машины запускается скрипт [**second-task.sh**](startup-scripts/second-task.sh), выполняющий следующие шаги:
-
-1. Устанавливается spawn-fcgi и необходимые для него пакеты.
-2. Содержимое файла опций **/etc/sysconfig/spawn-fcgi** заменяется [следующим](files/second-task/spawn-fcgi):
-    
-    ```ini
-    SOCKET=/var/run/php-fcgi.sock
-    OPTIONS="-u apache -g apache -s $SOCKET -S -M 0600 -C 32 -F 1 -- /usr/bin/php-cgi"
-    ```
-
-3. В каталог **/etc/systemd/system/** копируeтся Unit-файл сервиса [**spawn-fcgi.service**](files/second-task/spawn-fcgi.service):
-
-    ```ini
-    [Unit]
-    Description=Spawn-fcgi startup service by Otus
-    After=network.target
-
-    [Service]
-    Type=simple
-    PIDFile=/var/run/spawn-fcgi.pid
-    EnvironmentFile=/etc/sysconfig/spawn-fcgi
-    ExecStart=/usr/bin/spawn-fcgi -n $OPTIONS
-    KillMode=process
-
-    [Install]
-    WantedBy=multi-user.target
-    ```
-
-4. Запускается сервис и включается его автозапуск:
-    
-    ```bash
-    systemctl start spawn-fcgi
-    systemctl enable spawn-fcgi
-    ```
-
-#### Проверка <!-- omit in toc -->
-
-1. Залогиниться на виртуальной машине командой `vagrant ssh`.
-2. Убедиться, что сервис запущен:
-    
-    ```console
-    [vagrant@localhost ~]$ systemctl status spawn-fcgi
-    ● spawn-fcgi.service - Spawn-fcgi startup service by Otus
-       Loaded: loaded (/etc/systemd/system/spawn-fcgi.service; enabled; vendor preset: disabled)
-       Active: active (running) since Wed 2020-01-08 17:04:35 UTC; 30s ago
-     Main PID: 5644 (php-cgi)
-       CGroup: /system.slice/spawn-fcgi.service
-               ├─5644 /usr/bin/php-cgi
-               ...
-               └─5689 /usr/bin/php-cgi
-    ```
-
-### Задание 3. Разные конфигурационные файлы одного сервиса
-
-Задание: дополнить Unit-файл httpd возможностью запустить несколько инстансов сервера с разными конфигурационными файлами.
-
-#### Запуск <!-- omit in toc -->
-
-При создании виртуальной машины запускается скрипт [**third-task.sh**](startup-scripts/third-task.sh), выполняющий следующие шаги:
-
-1. Устанавливается httpd (если его нет в системе).
-2. В каталог **/etc/systemd/system/** копируeтся параметризированный Unit-файл сервиса [**httpd@.service**](files/third-task/httpd@.service):
-
-    ```ini
-    [Unit]
-    Description=The Apache HTTP Server
-    After=network.target remote-fs.target nss-lookup.target
-    Documentation=man:httpd(8)
-    Documentation=man:apachectl(8)
-
-    [Service]
-    Type=notify
-    EnvironmentFile=/etc/sysconfig/httpd-%I
-    ExecStart=/usr/sbin/httpd $OPTIONS -DFOREGROUND
-    ExecReload=/usr/sbin/httpd $OPTIONS -k graceful
-    ExecStop=/bin/kill -WINCH ${MAINPID}
-    KillSignal=SIGCONT
-    PrivateTmp=true
-
-    [Install]
-    WantedBy=multi-user.target
-    ```
-
-3. В каталог **/etc/sysconfig/** копируются файлы с опциями для различных конфигураций, в которых различаются ссылки на конфигурационные файлы httpd.
-
-    [**httpd-first**](files/third-task/httpd-first):
-
-    ```ini
-    OPTIONS=-f conf/first.conf
-    ```
-
-    [**httpd-second**](files/third-task/httpd-second):
-
-    ```ini
-    OPTIONS=-f conf/second.conf
-    ```
-
-4. В каталог **/etc/httpd/conf/** копируются конфигурационные файлы [**first.conf**](files/third-task/first.conf) и [**second.conf**](files/third-task/second.conf). Они отличаются от основного конфига **httpd.conf** и друг от друга опциями `Listen` (порт) и `PidFile`.
-
-    [**first.conf**](files/third-task/first.conf):
-
-    ```ini
-    ...
-    Listen 8008
-    PidFile /var/run/httpd-first.pid
-    ...
-    ```
-
-    [**second.conf**](files/third-task/second.conf):
-
-    ```ini
-    ...
-    Listen 8009
-    PidFile /var/run/httpd-second.pid
-    ...
-    ```
-
-    Выбраны порты 8008 и 8009, так как они разрешены для httpd политиками SELinux.
-
-5. Запускаются два сервиса с разными параметрами:
-
-    ```bash
-    systemctl start httpd@first
-    systemctl start httpd@second
-    ```
-
-#### Проверка <!-- omit in toc -->
-
-1. Залогиниться на виртуальной машине командой `vagrant ssh`.
-2. Убедиться, что оба сервиса запущены:
-
-    ```console
-    [vagrant@localhost ~]$ systemctl status httpd@first
-    ● httpd@first.service - The Apache HTTP Server
-       Loaded: loaded (/etc/systemd/system/httpd@.service; disabled; vendor preset: disabled)
-       Active: active (running) since Wed 2020-01-08 17:16:25 UTC; 53min ago
-         Docs: man:httpd(8)
-               man:apachectl(8)
-     Main PID: 4914 (httpd)
-       Status: "Total requests: 15; Current requests/sec: 0; Current traffic:   0 B/sec"
-       CGroup: /system.slice/system-httpd.slice/httpd@first.service
-               ├─4914 /usr/sbin/httpd -f conf/first.conf -DFOREGROUND
-               ...
-               └─5177 /usr/sbin/httpd -f conf/first.conf -DFOREGROUND
-    ```
-
-    ```console
-    [vagrant@localhost ~]$ systemctl status httpd@second
-    ● httpd@second.service - The Apache HTTP Server
-       Loaded: loaded (/etc/systemd/system/httpd@.service; disabled; vendor preset: disabled)
-       Active: active (running) since Wed 2020-01-08 17:16:25 UTC; 56min ago
-         Docs: man:httpd(8)
-               man:apachectl(8)
-     Main PID: 4921 (httpd)
-       Status: "Total requests: 10; Current requests/sec: 0; Current traffic:   0 B/sec"
-       CGroup: /system.slice/system-httpd.slice/httpd@second.service
-               ├─4921 /usr/sbin/httpd -f conf/second.conf -DFOREGROUND
-               ...
-               └─5180 /usr/sbin/httpd -f conf/second.conf -DFOREGROUND
-    ```
-
-3. Посмотреть, какие порты слушаются:
-
-    ```console
-    [vagrant@localhost ~]$ sudo ss -tnulp | grep httpd
-    tcp    LISTEN     0      128      :::8008                 :::*                   users:(("httpd",pid=5177,fd=4),("httpd",pid=5176,fd=4),("httpd",pid=5175,fd=4),("httpd",pid=4919,fd=4),(httpd",pid=4918,fd=4),("httpd",pid=4917,fd=4),("httpd",pid=4916,fd=4),("httpd",pid=4915,fd=4),("httpd",pid=4914,fd=4))
-    tcp    LISTEN     0      128      :::8009                 :::*                   users:(("httpd",pid=5180,fd=4),("httpd",pid=5179,fd=4),("httpd",pid=5178,fd=4),("httpd",pid=4926,fd=4),(httpd",pid=4925,fd=4),("httpd",pid=4924,fd=4),("httpd",pid=4923,fd=4),("httpd",pid=4922,fd=4),("httpd",pid=4921,fd=4))
-    ```
-
-4. На хостовой машине в браузере открыть страницу http://192.168.33.10:8008 или http://192.168.33.10:8009 (где IP-адрес — это адрес, указанный в [Vagrantfile](Vagrantfile)) и убедиться, что httpd работает:
-
-    ![](images/httpd-check.png)
-
-### Дополнительное задание
-
-Задание со звёздочкой: скачать демо-версию Atlassian Jira и переписать основной скрипт запуска на Unit-файл.
-
-#### Запуск <!-- omit in toc -->
-
-При создании виртуальной машины запускается скрипт [**star-task.sh**](startup-scripts/star-task.sh), выполняющий следующие шаги:
-
-1. Устанавливается wget.
-2. Устанавливается Java 8.
-3. Для всех пользователей задаётся переменная окружения `JAVA_HOME`, в которой содержится путь до домашнего каталога Java:
-
-    ```bash
-    echo export JAVA_HOME=$(readlink -nf $(which java) | xargs dirname | xargs dirname) >> /etc/environment
-    ```
-
-4. Создаётся инсталяционная директория, куда Jira будет установлена:
-
-    ```bash
-    mkdir -p /opt/atlassian/jira
-    ```
-
-5. Создаётся домашняя директория Jira, где будут храниться файлы приложения:
-
-    ```bash
-    mkdir -p /var/atlassian/application-data/jira
-    ```
-
-6. Скачивается архив с Jira, файлы из него распаковываются в инсталяционную директорию:
-
-    ```bash
-    wget https://product-downloads.atlassian.com/software/jira/downloads/atlassian-jira-software-8.6.0.tar.gz
-    tar zxvf atlassian-jira-software-8.6.0.tar.gz -C /opt/atlassian/jira --strip-components 1
-    ```
-
-    В архиве все файлы содержатся в каталоге **atlassian-jira-software-8.6.0-standalone**. Чтобы файлы распаковались напрямую в **/opt/atlassian/jira** (без включения их родительского каталога в путь), используется ключ `--strip-components 1`.
-
-7. Создаётся пользователь для работы с Jira:
-
-    ```bash
-    useradd --create-home -c "Jira role account" jira
-    ```
-
-8. Пользователь **jira** назначается владельцем инсталяционной и домашней директорий Jira:
-
-    ```bash
-    chown -R jira: /opt/atlassian/jira
-    chown -R jira: /var/atlassian/application-data/jira
-    ```
-
-9. В конфигурационном файле **jira-application.properties** указывается путь до домашней директории:
-
-    ```bash
-    sed -i 's|^jira.home =|jira.home = /var/atlassian/application-data/jira|' /opt/atlassian/jira/atlassian-jira/WEB-INF/classes/jira-application.properties
-    ```
-
-10. В каталог **/etc/systemd/system/** копируeтся Unit-файл сервиса [**jira.service**](files/star-task/jira.service):
-
-    ```ini
-    [Unit] 
-    Description=Jira Service
-    After=network.target
-
-    [Service] 
-    Type=forking
-    User=jira
-    PIDFile=/opt/atlassian/jira/work/catalina.pid
-    ExecStart=/opt/atlassian/jira/bin/start-jira.sh
-    ExecStop=/opt/atlassian/jira/bin/stop-jira.sh
-
-    [Install] 
-    WantedBy=multi-user.target
-    ```
-
-11. Запускается сервис и включается его автозапуск:
-    
-    ```bash
-    systemctl start jira
-    systemctl enable jira
-    ```
-
-#### Проверка <!-- omit in toc -->
-
-1. Залогиниться на виртуальной машине командой `vagrant ssh`.
-2. Убедиться, что сервис запущен:
-
-    ```console
-    [vagrant@localhost ~]$ systemctl status jira
-    ● jira.service - Jira Service
-       Loaded: loaded (/etc/systemd/system/jira.service; enabled; vendor preset: disabled)
-       Active: active (running) since Thu 2020-01-09 00:21:33 UTC; 39s ago
-     Main PID: 5920 (java)
-       CGroup: /system.slice/jira.service
-               └─5920 /usr/bin/java -Djava.util.logging.config.file=/opt/atlassian/jira/conf/logging.properties -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager -Xms384m ...
-    ```
-
-3. На хостовой машине в браузере открыть страницу http://192.168.33.10:8080 (где IP-адрес — это адрес, указанный в [Vagrantfile](Vagrantfile)) и убедиться, что Jira работает:
-
-    ![](images/jira-check.png)
+```console
+$ cat result.log | tail
+4966    ?       S (sleeping)    0:01    /usr/lib/zeitgeist/zeitgeist/zeitgeist-fts
+521     ?       I (idle)        0:00    [cfg80211]
+5680    tty2    S (sleeping)    1:25    /usr/lib/firefox/firefox -contentproc -parentBuildID 20200117190643 -prefsLen 7572 -prefMapSize 211231 -greomni /usr/lib/firefox/omni.ja -appomni /usr/lib/firefox/browser/omni.ja -appdir /usr/lib/firefox/browser 32063 true rdd
+6088    tty2    S (sleeping)    11:43   /usr/lib/firefox/firefox -contentproc -childID 28 -isForBrowser -prefsLen 7572 -prefMapSize 211231 -parentBuildID 20200117190643 -greomni /usr/lib/firefox/omni.ja -appomni /usr/lib/firefox/browser/omni.ja -appdir /usr/lib/firefox/browser 32063 true tab
+658     ?       I (idle)        0:00    [cryptd]
+9       ?       I (idle)        0:00    [mm_percpu_wq]
+918     pts/0   S (sleeping)    0:01    bash
+9528    ?       S (sleeping)    0:00    /lib/systemd/systemd --user
+9529    ?       S (sleeping)    0:00    (sd-pam)
+980     tty2    S (sleeping)    13:18   /usr/lib/firefox/firefox -contentproc -childID 10 -isForBrowser -prefsLen 7249 -prefMapSize 211231 -parentBuildID 20200117190643 -greomni /usr/lib/firefox/omni.ja -appomni /usr/lib/firefox/browser/omni.ja -appdir /usr/lib/firefox/browser 32063 true tab
+```
+
+### Что можно улучшить
+
+Добавить считывание поля starttime из файла **stat**, чтобы процессы можно было сортировать по времени запуска.
 
 <br/>
 

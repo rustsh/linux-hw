@@ -1,267 +1,295 @@
-## Домашнее задание к занятию № 26 — «DNS/DHCP — настройка и обслуживание»  <!-- omit in toc -->
+## Домашнее задание к занятию № 26 — «LDAP. Централизованная авторизация и аутентификация»    <!-- omit in toc -->
 
 ### Оглавление  <!-- omit in toc -->
 
 - [Задание](#Задание)
 - [Описание работы](#Описание-работы)
+  - [Настройка сервера](#Настройка-сервера)
+  - [Настройка клиента](#Настройка-клиента)
+  - [Добавление пользователя](#Добавление-пользователя)
 - [Проверка работы](#Проверка-работы)
-  - [Проверка SELinux](#Проверка-selinux)
-  - [Доступность зон на client1](#Доступность-зон-на-client1)
-  - [Доступность зон на client2](#Доступность-зон-на-client2)
+  - [Проверка работы файрвола](#Проверка-работы-файрвола)
+  - [Проверка настройки хостов](#Проверка-настройки-хостов)
+  - [Проверка подключения пользователя по SSH](#Проверка-подключения-пользователя-по-ssh)
+  - [Проверка работы FreeIPA в веб-интерфейсе](#Проверка-работы-freeipa-в-веб-интерфейсе)
 
 ### Задание
 
-Взять за основу стенд https://github.com/erlong15/vagrant-bind. Добавить еще один сервер — client2. Завести в зоне dns.lab имена:
-- web1 — смотрит на client1;
-- web2 — смотрит на client2.
-
-Завести еще одну зону — newdns.lab. Завести в ней запись www, которая смотрит на обоих клиентов.
-
-Настроить split-dns:
-- client1 видит обе зоны, но в зоне dns.lab — только web1;
-- client2 видит только dns.lab.
-
-Задание со *: настроить всё без выключения SELinux.
+1. Установить FreeIPA.
+2. Написать Ansible-плейбук для конфигурации клиента.
+3. Настроить аутентификацию по SSH-ключам. (*)
+4. Файрвол должен быть включён на сервере и на клиенте. (**)
 
 ### Описание работы
 
-За основу взят стэнд https://github.com/erlong15/vagrant-bind, в него внесены следующие изменения:
+При выполнении команды `vagrant up` поднимаются две виртуальные машины — server и client ([Vagrantfile](Vagrantfile)), которые конфигурируются при помощи Ansible. Хостовые имена сразу задаются в виде FQDN (`ipa-server.otus.lan` и `client.otus.lan` соответственно).
 
-1. В [Vagrantfile](Vagrantfile) добавлен ещё один клиент:
+Структура каталога:
 
-    ```ruby
-    config.vm.define "client2" do |client2|
-      client2.vm.network "private_network", ip: "192.168.50.16", virtualbox__intnet: "dns"
-      client2.vm.hostname = "client2"
-    end
+```console
+$ tree -L 3
+.
+├── ansible.cfg
+├── images
+│   ├── hosts.png
+│   ├── login.png
+│   ├── otus.png
+│   └── users.png
+├── provisioning
+│   ├── playbooks
+│   │   ├── start-client.yml
+│   │   └── start-server.yml
+│   └── roles
+│       ├── ipa-client
+│       ├── ipa-server
+│       └── ipa-user-add
+├── README.md
+└── Vagrantfile
+```
+
+#### Настройка сервера
+
+Плейбук для настройки сервера:
+
+```yml
+---
+- name: Provision IPA server
+  hosts: server
+  gather_facts: yes
+  roles:
+    - role: ipa-server
+      vars:
+        - dm_password: dmpassword
+        - admin_password: adminpassword
+```
+
+Для настройки сервера используется роль [ipa-server](provisioning/roles/ipa-server).
+
+1. Включается и конфигурируется файрвол: добавляются нужные для работы сервисы (dns, freeipa-ldap, freeipa-ldaps), после чего он перезапускается.
+2. При помощи утилиты authconfig в PAM добавляется правило для создания домашнего каталога при подключении по SSH:
+
+    ```console
+    authconfig --enablemkhomedir --update
     ```
 
-2. Скрипты предварительной настройки переписаны с использованием ролей и параметризированных шаблонов.
-3. Зона dns.lab разделена на два файла: [client1.dns.lab](provisioning/roles/dns-servers/files/zones/client1.dns.lab) и [client2.dns.lab](provisioning/roles/dns-servers/files/zones/client2.dns.lab) — в соответствии с заданием.
-4. Добавлен [файл зоны newdns.lab](provisioning/roles/dns-servers/files/zones/newdns.lab).
-5. Зона ddns.lab удалена, так как она нигде не используется.
-6. Файлы зон перемещены из каталога **/etc/named** в каталог **/var/named/zones** на master-сервере и **/var/named/slaves** на slave-сервере.
-7. В конфигурационных файлах **/etc/named.conf** на [master-сервере](provisioning/roles/dns-servers/templates/master-named.conf.j2) и [slave-сервере](provisioning/roles/dns-servers/templates/slave-named.conf.j2) настроены представления (views), разделяющие использование зон для client1, client2 и всех остальных.
-8. SELinux по умолчанию сконфигурирован таким образом, что не требует дополнительной настройки (подробнее можно прочитать [в документации](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/chap-managing_confined_services-berkeley_internet_name_domain#sect-Managing_Confined_Services-BIND-BIND_and_SELinux)).
+3. В файл **/etc/hosts** добавляется строчка:
+
+    ```
+    192.168.33.10   ipa-server.otus.lan     ipa-server
+    ```
+
+    IP-адрес и доменное имя задаются в Vagrantfile, а Ansible берёт их из собранных фактов.
+
+4. Устанавливаются пакеты `ipa-server` и `ipa-server-dns`, а также обновляется пакет `nss` (без этого установка сервера IPA падает с ошибкой).
+5. В пакетном (неинтерактивном) режиме (т. е. с ключом `--unattended`) выполняется команда `ipa-server-install`. Все переменные для настройки задаются в файле [defaults/main.yml](provisioning/roles/ipa-server/defaults/main.yml) Ansible-роли [ipa-server](provisioning/roles/ipa-server), при этом пароли могут быть переопределены в плейбуке [start-server.yml](provisioning/playbooks/start-server.yml).
+
+    Также при установке используется ключ вида `--subject-base="O=OTUS.LAN 1585658548"`, где `1585658548` — временная метка. Без этого при удалении и новой установке сервера IPA будет создан другой сертификат с тем же именем, что приведёт к ошибке `SEC_ERROR_REUSED_ISSUER_AND_SERIAL` при попытке повторно зайти в веб-интерфейс через браузер после переустановки сервера.
+
+#### Настройка клиента
+
+Плейбук для настройки клиента и добавления пользователя:
+
+```yml
+---
+- name: Provision IPA client
+  hosts: client
+  gather_facts: yes
+  vars:
+    - admin_password: adminpassword
+    - server_ip: 192.168.33.10
+  roles:
+    - role: ipa-client
+    - role: ipa-user-add
+      vars:
+        - user_login: otus
+        - user_name: John
+        - user_surname: Doe
+```
+
+Для настройки клиента используется роль [ipa-client](provisioning/roles/ipa-client).
+
+1. Включается файрвол.
+2. При помощи утилиты authconfig в PAM добавляется правило для создания домашнего каталога при подключении по SSH:
+
+    ```console
+    authconfig --enablemkhomedir --update
+    ```
+
+3. Файл **/etc/resolv.conf** приводится к виду:
+
+    ```
+    nameserver 192.163.33.10
+    domain otus.lan
+    ```
+
+    IP — адрес сервера, задаётся в переменной в [defaults/main.yml](provisioning/roles/ipa-client/defaults/main.yml) Ansible-роли [ipa-client](provisioning/roles/ipa-client) и может быть переопределён в плейбуке [start-client.yml](provisioning/playbooks/start-client.yml). Доменное имя Ansible берёт из собранных фактов.
+
+4. Устанавливается пакет `ipa-client`.
+5. В пакетном (неинтерактивном) режиме (т. е. с ключом `--unattended`) выполняется команда `ipa-client-install`. Пароль для пользователя admin задаётся в файле [defaults/main.yml](provisioning/roles/ipa-client/defaults/main.yml) Ansible-роли [ipa-client](provisioning/roles/ipa-client) и может быть переопределён в плейбуке [start-client.yml](provisioning/playbooks/start-client.yml) в соответствии с паролем, заданным для этого пользователя при установке сервера.
+
+#### Добавление пользователя
+
+Для добавления пользователя используется роль [ipa-user-add](provisioning/roles/ipa-user-add).
+
+1. На клиенте создаётся пользователь otus без пароля, для него генерируется пара SSH-ключей.
+2. Запрашивается тикет Kerberos для пользователя admin:
+
+    ```console
+    echo -n adminpassword | kinit admin
+    ```
+
+3. Выполняется команда `ipa user-add` для добавления пользователя otus в домен. Для того чтобы скопировать его публичный SSH-ключ на сервер IPA, используется ключ `--sshpubkey="$(cat /home/otus/.ssh/id_rsa.pub)"`.
 
 ### Проверка работы
 
 Чтобы создать и сконфигурировать все машины, достаточно выполнить команду `vagrant up`.
 
-#### Проверка SELinux
+#### Проверка работы файрвола
 
-На ns01 (master):
+1. Подключиться к серверу:
 
-```console
-[root@ns01 ~]# sestatus
-SELinux status:                 enabled
-SELinuxfs mount:                /sys/fs/selinux
-SELinux root directory:         /etc/selinux
-Loaded policy name:             targeted
-Current mode:                   enforcing
-Mode from config file:          enforcing
-Policy MLS status:              enabled
-Policy deny_unknown status:     allowed
-Max kernel policy version:      31
+    ```console
+    $ vagrant ssh server
+    ```
 
-[root@ns01 ~]# ls -Z /var/named
-drwxrwx---. named named system_u:object_r:named_cache_t:s0 data
-drwxrwx---. named named system_u:object_r:named_cache_t:s0 dynamic
--rw-r-----. root  named system_u:object_r:named_conf_t:s0 named.ca
--rw-r-----. root  named system_u:object_r:named_zone_t:s0 named.empty
--rw-r-----. root  named system_u:object_r:named_zone_t:s0 named.localhost
--rw-r-----. root  named system_u:object_r:named_zone_t:s0 named.loopback
-drwxrwx---. named named system_u:object_r:named_cache_t:s0 slaves
-drwxr-xr-x. root  named unconfined_u:object_r:named_zone_t:s0 zones
-```
+2. Залогиниться под пользователем root:
 
-На ns02 (slave):
+    ```console
+    [vagrant@ipa-server ~]$ sudo -i
+    ```
 
-```console
-[root@ns02 ~]# sestatus
-SELinux status:                 enabled
-SELinuxfs mount:                /sys/fs/selinux
-SELinux root directory:         /etc/selinux
-Loaded policy name:             targeted
-Current mode:                   enforcing
-Mode from config file:          enforcing
-Policy MLS status:              enabled
-Policy deny_unknown status:     allowed
-Max kernel policy version:      31
+3. Убедиться, что файрвол работает:
 
-[root@ns02 ~]# ls -Z /var/named/slaves/
--rw-r--r--. named named system_u:object_r:named_cache_t:s0 client1.dns.lab
--rw-r--r--. named named system_u:object_r:named_cache_t:s0 client2.dns.lab
--rw-r--r--. named named system_u:object_r:named_cache_t:s0 dns.lab.rev
--rw-r--r--. named named system_u:object_r:named_cache_t:s0 newdns.lab
-```
+    ```console
+    [root@ipa-server ~]# firewall-cmd --state
+    running
+    ```
 
-#### Доступность зон на client1
+4. Проверить, какие службы добавлены в правила файрвола:
 
-```console
-[vagrant@client1 ~]$ ping -c2 web1
-PING web1.dns.lab (192.168.50.15) 56(84) bytes of data.
-64 bytes from client1 (192.168.50.15): icmp_seq=1 ttl=64 time=0.010 ms
-64 bytes from client1 (192.168.50.15): icmp_seq=2 ttl=64 time=0.049 ms
+    ```console
+    [root@ipa-server ~]# firewall-cmd --list-services 
+    ssh dhcpv6-client dns freeipa-ldap freeipa-ldaps
+    ```
 
---- web1.dns.lab ping statistics ---
-2 packets transmitted, 2 received, 0% packet loss, time 1003ms
-rtt min/avg/max/mdev = 0.010/0.029/0.049/0.020 ms
-```
+#### Проверка настройки хостов
 
-```console
-[vagrant@client1 ~]$ ping -c2 web2
-ping: web2: Name or service not known
-```
+1. Подключиться к клиенту:
 
-```console
-[vagrant@client1 ~]$ ping -c2 www.newdns.lab
-PING www.newdns.lab (192.168.50.15) 56(84) bytes of data.
-64 bytes from client1 (192.168.50.15): icmp_seq=1 ttl=64 time=0.014 ms
-64 bytes from client1 (192.168.50.15): icmp_seq=2 ttl=64 time=0.048 ms
+    ```console
+    $ vagrant ssh client
+    ```
 
---- www.newdns.lab ping statistics ---
-2 packets transmitted, 2 received, 0% packet loss, time 1005ms
-rtt min/avg/max/mdev = 0.014/0.031/0.048/0.017 ms
-```
+2. Залогиниться под пользователем root:
 
-```console
-[vagrant@client1 ~]$ dig web2.dns.lab 
+    ```console
+    [vagrant@client ~]$ sudo -i
+    ```
 
-; <<>> DiG 9.11.4-P2-RedHat-9.11.4-16.P2.el7_8.2 <<>> web2.dns.lab
-;; global options: +cmd
-;; Got answer:
-;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 60481
-;; flags: qr aa rd ra; QUERY: 1, ANSWER: 0, AUTHORITY: 1, ADDITIONAL: 1
+3. Проверить список тикетов в кэше:
 
-;; OPT PSEUDOSECTION:
-; EDNS: version: 0, flags:; udp: 4096
-;; QUESTION SECTION:
-;web2.dns.lab.                  IN      A
+    ```console
+    [root@client ~]# klist
+    Ticket cache: KEYRING:persistent:0:0
+    Default principal: admin@OTUS.LAN
 
-;; AUTHORITY SECTION:
-dns.lab.                600     IN      SOA     ns01.dns.lab. root.dns.lab. 2711201407 3600 600 86400 600
+    Valid starting       Expires              Service principal
+    03/31/2020 12:19:55  04/01/2020 12:19:55  HTTP/ipa-server.otus.lan@OTUS.LAN
+    03/31/2020 12:19:55  04/01/2020 12:19:55  krbtgt/OTUS.LAN@OTUS.LAN
+    ```
 
-;; Query time: 1 msec
-;; SERVER: 192.168.50.10#53(192.168.50.10)
-;; WHEN: Sun May 03 15:22:31 UTC 2020
-;; MSG SIZE  rcvd: 87
-```
+4. Просмотреть информацию о пользователях:
 
-```console
-[vagrant@client1 ~]$ dig www.newdns.lab 
+    ```console
+    [root@client ~]# ipa user-find
+    ---------------
+    2 users matched
+    ---------------
+    User login: admin
+    Last name: Administrator
+    Home directory: /home/admin
+    Login shell: /bin/bash
+    Principal alias: admin@OTUS.LAN
+    UID: 1684800000
+    GID: 1684800000
+    Account disabled: False
 
-; <<>> DiG 9.11.4-P2-RedHat-9.11.4-16.P2.el7_8.2 <<>> www.newdns.lab
-;; global options: +cmd
-;; Got answer:
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 25175
-;; flags: qr aa rd ra; QUERY: 1, ANSWER: 2, AUTHORITY: 2, ADDITIONAL: 3
+    User login: otus
+    First name: John
+    Last name: Doe
+    Home directory: /home/otus
+    Login shell: /bin/bash
+    Principal name: otus@OTUS.LAN
+    Principal alias: otus@OTUS.LAN
+    Email address: otus@otus.lan
+    UID: 1684800001
+    GID: 1684800001
+    SSH public key fingerprint: SHA256:eEG21yV6vyNCuTpP/jDkMlfJC708WINPYHq1mBTqqOM ansible-generated on client.otus.lan (ssh-rsa)
+    Account disabled: False
+    ----------------------------
+    Number of entries returned 2
+    ----------------------------
+    ```
 
-;; OPT PSEUDOSECTION:
-; EDNS: version: 0, flags:; udp: 4096
-;; QUESTION SECTION:
-;www.newdns.lab.                        IN      A
+#### Проверка подключения пользователя по SSH
 
-;; ANSWER SECTION:
-www.newdns.lab.         3600    IN      A       192.168.50.15
-www.newdns.lab.         3600    IN      A       192.168.50.16
+1. Подключиться к клиенту:
 
-;; AUTHORITY SECTION:
-newdns.lab.             3600    IN      NS      ns02.dns.lab.
-newdns.lab.             3600    IN      NS      ns01.dns.lab.
+    ```console
+    $ vagrant ssh client
+    ```
 
-;; ADDITIONAL SECTION:
-ns01.dns.lab.           3600    IN      A       192.168.50.10
-ns02.dns.lab.           3600    IN      A       192.168.50.11
+2. Залогиниться под пользователем otus:
 
-;; Query time: 1 msec
-;; SERVER: 192.168.50.10#53(192.168.50.10)
-;; WHEN: Sun May 03 15:22:39 UTC 2020
-;; MSG SIZE  rcvd: 149
-```
+    ```console
+    [vagrant@client ~]$ sudo su - otus
+    ```
 
-#### Доступность зон на client2
+3. Подключиться к серверу по SSH:
 
-```console
-[vagrant@client2 ~]$ ping -c2 web1
-PING web1.dns.lab (192.168.50.15) 56(84) bytes of data.
-64 bytes from 192.168.50.15 (192.168.50.15): icmp_seq=1 ttl=64 time=0.511 ms
-64 bytes from 192.168.50.15 (192.168.50.15): icmp_seq=2 ttl=64 time=0.801 ms
+    ```console
+    [otus@client ~]$ ssh otus@192.168.33.10
+    The authenticity of host '192.168.33.10 (<no hostip for proxy command>)' can't be established.
+    ECDSA key fingerprint is SHA256:hTXj1eCNZrGackN6eM3II5YV/iWzuqcFNs/7RxYnPOM.
+    ECDSA key fingerprint is MD5:bc:a5:b1:1f:dd:70:50:9a:9d:ec:b6:b8:ba:ea:48:ee.
+    Are you sure you want to continue connecting (yes/no)? yes
+    Warning: Permanently added '192.168.33.10' (ECDSA) to the list of known hosts.
+    Creating home directory for otus.
+    [otus@ipa-server ~]$ hostname
+    ipa-server.otus.lan 
+    ```
 
---- web1.dns.lab ping statistics ---
-2 packets transmitted, 2 received, 0% packet loss, time 1002ms
-rtt min/avg/max/mdev = 0.511/0.656/0.801/0.145 ms
-```
+    Подключение прошло успешно, хотя публичный ключ не был скопирован на хост обычными средствами (например, при помощи команды `ssh-copy-id`). Также на сервере при подключении был создан домашний каталог для пользователя otus:
 
-```console
-[vagrant@client2 ~]$ ping -c2 web2
-PING web2.dns.lab (192.168.50.16) 56(84) bytes of data.
-64 bytes from client2 (192.168.50.16): icmp_seq=1 ttl=64 time=0.035 ms
-64 bytes from client2 (192.168.50.16): icmp_seq=2 ttl=64 time=0.047 ms
+    ```console
+    [otus@ipa-server ~]$ pwd
+    /home/otus
+    ```
 
---- web2.dns.lab ping statistics ---
-2 packets transmitted, 2 received, 0% packet loss, time 1002ms
-rtt min/avg/max/mdev = 0.035/0.041/0.047/0.006 ms
-```
+#### Проверка работы FreeIPA в веб-интерфейсе
 
-```console
-[vagrant@client2 ~]$ ping -c2 www.newdns.lab
-ping: www.newdns.lab: Name or service not known
-```
+1. На локальной машине добавить в файл **/etc/hosts** строку:
 
-```console
-[vagrant@client2 ~]$ dig web2.dns.lab
+    ```
+    192.168.33.10 ipa-server.otus.lan
+    ```
 
-; <<>> DiG 9.11.4-P2-RedHat-9.11.4-16.P2.el7_8.2 <<>> web2.dns.lab
-;; global options: +cmd
-;; Got answer:
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 63052
-;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 2, ADDITIONAL: 3
+2. В браузере перейти на страницу http://192.168.33.10/. Должен произойти редирект на https://ipa-server.otus.lan/ipa/ui/ со страницей для входа во FreeIPA:
 
-;; OPT PSEUDOSECTION:
-; EDNS: version: 0, flags:; udp: 4096
-;; QUESTION SECTION:
-;web2.dns.lab.                  IN      A
+    ![](images/login.png)
 
-;; ANSWER SECTION:
-web2.dns.lab.           3600    IN      A       192.168.50.16
+3. Залогиниться, используя имя и пароль администратора (в данной работе это `admin` и `adminpassword`).
+4. На вкладке Hosts проверить, какие хосты включены в домен. Убедиться, что в списке есть client.otus.lan:
 
-;; AUTHORITY SECTION:
-dns.lab.                3600    IN      NS      ns01.dns.lab.
-dns.lab.                3600    IN      NS      ns02.dns.lab.
+    ![](images/hosts.png)
 
-;; ADDITIONAL SECTION:
-ns01.dns.lab.           3600    IN      A       192.168.50.10
-ns02.dns.lab.           3600    IN      A       192.168.50.11
+5. На вкладке Users проверить, какие пользователи включены в домен. Убедиться, что в списке есть otus:
 
-;; Query time: 1 msec
-;; SERVER: 192.168.50.10#53(192.168.50.10)
-;; WHEN: Sun May 03 15:59:57 UTC 2020
-;; MSG SIZE  rcvd: 127
-```
+    ![](images/users.png)
 
-```console
-[vagrant@client2 ~]$ dig www.newdns.lab
+6. Перейти в настройки пользователя otus и проверить информацию о нём:
 
-; <<>> DiG 9.11.4-P2-RedHat-9.11.4-16.P2.el7_8.2 <<>> www.newdns.lab
-;; global options: +cmd
-;; Got answer:
-;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 39121
-;; flags: qr rd ra ad; QUERY: 1, ANSWER: 0, AUTHORITY: 1, ADDITIONAL: 1
-
-;; OPT PSEUDOSECTION:
-; EDNS: version: 0, flags:; udp: 4096
-;; QUESTION SECTION:
-;www.newdns.lab.                        IN      A
-
-;; AUTHORITY SECTION:
-.                       10784   IN      SOA     a.root-servers.net. nstld.verisign-grs.com. 2020050300 1800 900 604800 86400
-
-;; Query time: 1 msec
-;; SERVER: 192.168.50.10#53(192.168.50.10)
-;; WHEN: Sun May 03 16:00:03 UTC 2020
-;; MSG SIZE  rcvd: 118
-```
+    ![](images/otus.png)
 
 <br/>
 

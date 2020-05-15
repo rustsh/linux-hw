@@ -1,0 +1,29 @@
+---
+- name: Initial network settings
+  hosts: all
+  roles:
+    - init_net
+
+- name: Config vlan1
+  hosts: testServer1, testClient1
+  vars:
+    vlan_number: 1
+  roles:
+    - vlan
+
+- name: Config vlan2
+  hosts: testServer2, testClient2
+  vars:
+    vlan_number: 2
+  roles:
+    - vlan
+
+- name: Config vlan on router
+  hosts: centralRouter
+  roles:
+    - vlan
+
+- name: Config teaming
+  hosts: inetRouter, centralRouter
+  roles:
+    - team
