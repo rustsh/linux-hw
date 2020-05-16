@@ -1,7 +1,7 @@
 ---
-- name: Create user for Borg
+- name: Generate SSH keys for root
   user:
-    name: "{{ borg_user }}"
+    name: root
     generate_ssh_key: yes
 
 - name: Download and install Borg
@@ -10,4 +10,4 @@
     dest: /bin/borg
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"

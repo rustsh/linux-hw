@@ -7,8 +7,8 @@ export BORG_REPO={{ borg_user }}@{{ dest_host }}:{{ backup_path }}
 export BORG_PASSPHRASE='{{ borg_passphrase }}'
 
 # some helpers and error handling:
-info() { printf "\n%s %s\n\n" "$( date )" "$*" >&2; }
-trap 'echo $( date ) Backup interrupted >&2; exit 2' INT TERM
+info() { printf "#### %s %s ####\n" "$( date )" "$*" | tee -a /var/log/borg.log; }
+trap 'echo $( date ) Backup interrupted | tee -a /var/log/borg.log; exit 2' INT TERM
 
 info "Starting backup"
 
@@ -26,16 +26,20 @@ borg create                         \
                                     \
     ::'{now:%Y-%m-%d_%H:%M}'        \
     /etc                            \
+    2>> /var/log/borg.log
 
 backup_exit=$?
 
 info "Pruning repository"
 
 borg prune                          \
+    --verbose                       \
     --list                          \
     --show-rc                       \
     --stats                         \
-    --keep-within 2H                \
+    --keep-within 30d               \
+    --keep-monthly 2                \
+    2>> /var/log/borg.log
 
 prune_exit=$?
 

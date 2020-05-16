@@ -1,42 +1,34 @@
 ---
-- name: Create directory for backup on server
-  become_user: "{{ borg_user }}"
+- name: Create directory for backup on backup server
   file:
     path: "{{ backup_path }}"
     state: directory
+    owner: "{{ borg_user }}"
+    group: "{{ borg_user }}"
   delegate_to: "{{ dest_host }}"
 
-- name: Copy script for install pip
-  get_url:
-    url: https://bootstrap.pypa.io/get-pip.py
-    dest: /tmp
-
-- name: Install pip
-  command: python /tmp/get-pip.py
-
-- name: Install pexpect for use expect module
-  pip:
-    name: pexpect
+- name: Check that backup repo exists
+  stat:
+    path: "{{ backup_path }}/data"
+  register: repo_data
+  delegate_to: "{{ dest_host }}"
 
 - name: Init Borg repo
-  become_user: "{{ borg_user }}"
-  expect:
-    command: borg init -e repokey {{ borg_user }}@{{ dest_host }}:{{ backup_path }}
-    responses:
-      "Enter": "{{ borg_passphrase }}"
-      "Do you want": n
+  command: borg init -e repokey {{ borg_user }}@{{ dest_host }}:{{ backup_path }}
+  environment:
+    BORG_NEW_PASSPHRASE: "{{ borg_passphrase }}"
+  when: not repo_data.stat.exists
 
 - name: Copy backup script
   template:
     src: borg-etc.j2
-    dest: /home/{{ borg_user }}/borg-etc.sh
+    dest: /opt/borg-etc.sh
     owner: "{{ borg_user }}"
     group: "{{ borg_user }}"
-    mode: '0700'
+    mode: "0700"
 
 - name: Set cron to create backup every 15 minutes
-  become_user: "{{ borg_user }}"
   cron:
     name: "Create backup with Borg"
-    minute: "*/15"
-    job: "/home/{{ borg_user }}/borg-etc.sh > /dev/null 2>&1"
+    special_time: hourly
+    job: "/opt/borg-etc.sh > /dev/null 2>&1"

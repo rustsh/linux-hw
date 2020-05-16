@@ -1,0 +1,3 @@
+---
+borg_user: root
+backup_path: /opt/backups/files-etc

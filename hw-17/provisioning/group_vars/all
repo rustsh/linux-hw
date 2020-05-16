@@ -1,3 +1,0 @@
----
-borg_user: borg
-backup_path: /home/{{ borg_user }}/backup/files-etc
