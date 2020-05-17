@@ -1,4 +1,9 @@
 ---
+- name: Generate SSH keys for root
+  user:
+    name: root
+    generate_ssh_key: yes
+
 - name: Read public key on {{ source_host }}
   command: "cat /root/.ssh/id_rsa.pub"
   register: pub_key

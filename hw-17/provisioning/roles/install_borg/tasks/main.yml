@@ -1,9 +1,4 @@
 ---
-- name: Generate SSH keys for root
-  user:
-    name: root
-    generate_ssh_key: yes
-
 - name: Download and install Borg
   get_url:
     url: https://github.com/borgbackup/borg/releases/download/{{ borg_version }}/borg-linux64

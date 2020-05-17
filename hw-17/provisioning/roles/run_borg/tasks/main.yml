@@ -21,13 +21,13 @@
 
 - name: Copy backup script
   template:
-    src: borg-etc.j2
+    src: borg-etc.sh.j2
     dest: /opt/borg-etc.sh
     owner: "{{ borg_user }}"
     group: "{{ borg_user }}"
     mode: "0700"
 
-- name: Set cron to create backup every 15 minutes
+- name: Set cron to create backup every hour
   cron:
     name: "Create backup with Borg"
     special_time: hourly
