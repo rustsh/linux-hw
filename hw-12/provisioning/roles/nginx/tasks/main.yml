@@ -1,0 +1,36 @@
+---
+- name: Add Nginx repo
+  copy:
+    src: nginx.repo
+    dest: /etc/yum.repos.d/nginx.repo
+
+- name: Install Nginx
+  yum:
+    name: nginx
+    state: present
+
+- name: Copy default.conf
+  copy:
+    src: default.conf
+    dest: /etc/nginx/conf.d/default.conf
+  notify:
+    - Restart nginx
+
+- name: Start Nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+# - name: Install libsemanage-python
+#   yum:
+#     name: libsemanage-python
+#     state: present
+#     update_cache: yes
+
+# # Set httpd_can_network_connect flag on and keep it persistent across reboots
+# - name: Set SELinux allows proxy pass 
+#   seboolean:
+#     name: httpd_can_network_connect
+#     state: yes
+#     persistent: yes
