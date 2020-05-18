@@ -1,0 +1,13 @@
+---
+- name: Install SELinux utils
+  yum:
+    name: [policycoreutils-python, setroubleshoot, setools]
+    state: present
+
+# semanage port -a -t http_port_t -p tcp 200
+- name: Allow Nginx to listen on tcp port 200
+  seport:
+    ports: 200
+    proto: tcp
+    setype: http_port_t
+    state: present
