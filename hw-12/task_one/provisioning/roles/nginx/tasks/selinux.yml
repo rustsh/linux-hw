@@ -4,6 +4,13 @@
     name: [policycoreutils-python, setroubleshoot, setools]
     state: present
 
+# setsebool -P nis_enabled on
+- name: Set nis_enabled flag on and keep it persistent across reboots
+  seboolean:
+    name: nis_enabled
+    state: yes
+    persistent: yes
+
 # semanage port -a -t http_port_t -p tcp 200
 - name: Allow Nginx to listen on tcp port 200
   seport:
