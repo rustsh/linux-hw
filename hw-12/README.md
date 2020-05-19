@@ -120,7 +120,146 @@ http_port_t                    tcp      200, 80, 81, 443, 488, 8008, 8009, 8443,
   - выбрать одно из решений для реализации, предварительно обосновав выбор;
   - реализовать выбранное решение и продемонстрировать его работоспособность.
 
+#### Причина неработоспособности
 
+Согласно [документации](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/chap-managing_confined_services-berkeley_internet_name_domain#sect-Managing_Confined_Services-BIND-BIND_and_SELinux), для контекста безопасности файлов мастер-зон используется тип `named_zone_t`, а для динамических зон — `named_cache_t`. В предоставленном стенде файлы зон располагаются в каталоге **/etc/named** и имеют другой тип (`etc_t`):
+
+```console
+[root@ns01 ~]# ls -Z /etc/named/
+drw-rwx---. root named unconfined_u:object_r:etc_t:s0   dynamic
+-rw-rw----. root named system_u:object_r:etc_t:s0       named.50.168.192.rev
+-rw-rw----. root named system_u:object_r:etc_t:s0       named.dns.lab
+-rw-rw----. root named system_u:object_r:etc_t:s0       named.dns.lab.view1
+-rw-rw----. root named system_u:object_r:etc_t:s0       named.newdns.lab
+
+[root@ns01 ~]# ls -Z /etc/named/dynamic/
+-rw-rw----. named named system_u:object_r:etc_t:s0       named.ddns.lab
+-rw-rw----. named named system_u:object_r:etc_t:s0       named.ddns.lab.view1
+```
+
+Таким образом, SELinux запрещает доступ на чтение и запись к файлам зон (а именно к **named.ddns.lab.view1.jnl**), так как их контекст безопасности имеет неверный тип. Информацию об этом, а также варианты решения, можно посмотреть в логах на ns01:
+
+```console
+root@ns01 ~]# sealert -a /var/log/audit/audit.log 
+...
+SELinux is preventing /usr/sbin/named from create access on the file named.ddns.lab.view1.jnl.
+...
+```
+
+#### Варианты решения
+
+Так как причиной неработоспособности является неверный тип контекста безопасности, есть как минимум три способа её устранения:
+
+1. Перенести все файлы зон в каталог **/var/named**, в котором файлы по умолчанию имеют правильный тип (при этом тип у перенесённых файлов поменяется автоматически).
+2. Изменить тип файлов в **/etc/named**.
+3. Создать и установить модуль локальной политики для разрешения действия (например, при помощи утилиты audit2allow).
+
+Первый вариант является предпочтительным, так как не требует дополнительной настройки SELinux. Однако если зоны уже существуют и используются, кроме переноса самих файлов необходимо перенастроить их расположение в файле конфигурации, что при большом количестве зон и представлений может быть трудоёмко, и есть риск получить ошибку из-за невнимательности. Кроме того, DNS-зоны во время переноса могут быть недоступны, что может быть критично для уже работающего сервиса. Вывод: этот способ лучше всего использовать при начальной настройке системы.
+
+Третий вариант несёт в себе следующие минусы: во-первых, при замене DNS-сервера на новой машине опять потребуется установить модуль (то есть нужно где-то хранить файлы модуля либо воспроизводить ошибку для audit2allow), а во-вторых, созданный посредством audit2allow модуль может вносить нежелательные изменения, то есть мы теряем часть контроля над системой. Создание же модулей вручную требует определённой квалификации, которая есть не у всех, что затрудняет сопровождение итоговой конфигурации.
+
+Таким образом, наиболее целесообразным в данном случае выглядит второй вариант — изменение контекста существующих файлов.
+
+#### Применение решения
+
+Так как требуется внести изменения в динамическую зону, изменим контекст безопасности только для каталога **/etc/named/dynamic** (и файлов внутри него):
+
+```console
+[root@ns01 ~]# semanage fcontext -a -t named_cache_t "/etc/named/dynamic(/.*)?"
+[root@ns01 ~]# restorecon -rv /etc/named/dynamic/
+restorecon reset /etc/named/dynamic context unconfined_u:object_r:etc_t:s0->unconfined_u:object_r:named_cache_t:s0
+restorecon reset /etc/named/dynamic/named.ddns.lab context system_u:object_r:etc_t:s0->system_u:object_r:named_cache_t:s0
+restorecon reset /etc/named/dynamic/named.ddns.lab.view1 context system_u:object_r:etc_t:s0->system_u:object_r:named_cache_t:s0
+```
+
+Соответствующие изменения также добавлены в плейбук Ansible:
+
+```yml
+- name: Allow named to modify files in /etc/named/dynamic
+  sefcontext:
+    target: '/etc/named/dynamic(/.*)?'
+    setype: named_cache_t
+    state: present
+
+- name: Apply new SELinux file context to filesystem
+  command: restorecon -rv /etc/named/dynamic
+```
+
+#### Проверка решения
+
+Убедимся, что тип в контексте файлов изменился:
+
+```console
+[root@ns01 ~]# ls -Z /etc/named/dynamic/
+-rw-rw----. named named system_u:object_r:named_cache_t:s0 named.ddns.lab
+-rw-rw----. named named system_u:object_r:named_cache_t:s0 named.ddns.lab.view1
+```
+
+Повторим внесение изменений в DNS-зону на клиенте и убедимся, что ошибка больше не возникает:
+
+```console
+[vagrant@client ~]$ nsupdate -k /etc/named.zonetransfer.key
+> server 192.168.50.10
+> zone ddns.lab
+> update add www.ddns.lab. 60 A 192.168.50.15
+> send
+> quit
+```
+
+На ns01 создан новый файл зоны:
+
+```console
+[root@ns01 ~]# ls -Z /etc/named/dynamic/
+-rw-rw----. named named system_u:object_r:named_cache_t:s0 named.ddns.lab
+-rw-rw----. named named system_u:object_r:named_cache_t:s0 named.ddns.lab.view1
+-rw-r--r--. named named system_u:object_r:named_cache_t:s0 named.ddns.lab.view1.jnl
+```
+
+Выполним на клиенте команду dig и убедимся, что изменение зоны применилось:
+
+```console
+[vagrant@client ~]$ dig www.ddns.lab
+
+; <<>> DiG 9.11.4-P2-RedHat-9.11.4-16.P2.el7_8.3 <<>> www.ddns.lab
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 27977
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 1, ADDITIONAL: 2
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 4096
+;; QUESTION SECTION:
+;www.ddns.lab.                  IN      A
+
+;; ANSWER SECTION:
+www.ddns.lab.           60      IN      A       192.168.50.15
+
+;; AUTHORITY SECTION:
+ddns.lab.               3600    IN      NS      ns01.dns.lab.
+
+;; ADDITIONAL SECTION:
+ns01.dns.lab.           3600    IN      A       192.168.50.10
+
+;; Query time: 2 msec
+;; SERVER: 192.168.50.10#53(192.168.50.10)
+;; WHEN: Tue May 19 05:15:29 UTC 2020
+;; MSG SIZE  rcvd: 96
+```
+
+Дополнительно проверим это при помощи команды ping:
+
+```console
+[vagrant@client ~]$ ping -c4 www.ddns.lab
+PING www.ddns.lab (192.168.50.15) 56(84) bytes of data.
+64 bytes from www.newdns.lab (192.168.50.15): icmp_seq=1 ttl=64 time=0.088 ms
+64 bytes from www.newdns.lab (192.168.50.15): icmp_seq=2 ttl=64 time=0.135 ms
+64 bytes from www.newdns.lab (192.168.50.15): icmp_seq=3 ttl=64 time=0.057 ms
+64 bytes from www.newdns.lab (192.168.50.15): icmp_seq=4 ttl=64 time=0.114 ms
+
+--- www.ddns.lab ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3002ms
+rtt min/avg/max/mdev = 0.057/0.098/0.135/0.030 ms
+```
 
 <br/>
 
