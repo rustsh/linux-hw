@@ -63,7 +63,9 @@ ET allow nsswitch_domain unreserved_port_t : tcp_socket name_bind ; [ nis_enable
 ET allow nsswitch_domain unreserved_port_t : udp_socket name_bind ; [ nis_enabled ]
 ```
 
-Нужный переключатель — nis_enabled — указан в квадратных скобках. Команда для включения переключателя nis_enabled:
+Нужный переключатель — nis_enabled — указан в квадратных скобках.
+
+Команда для включения переключателя nis_enabled:
 
 ```console
 [root@webserver ~]# setsebool -P nis_enabled on
@@ -232,7 +234,7 @@ SELinux is preventing /usr/sbin/named from create access on the file named.ddns.
 
 4. Создать и установить модуль локальной политики для разрешения действия (например, при помощи утилиты audit2allow).
 
-    Основной недостаток этого варианта состоит в том, что созданный посредством audit2allow модуль может вносить нежелательные изменения в работу SELinux, то есть мы теряем часть контроля над системой (сама RedHat [не рекомендует использовать этот способ](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/sect-security-enhanced_linux-troubleshooting-fixing_problems#sect-Security-Enhanced_Linux-Fixing_Problems-Allowing_Access_audit2allow)). Создание же модулей вручную требует определённой квалификации, которая есть не у всех, что затрудняет сопровождение итоговой конфигурации.
+    Основной недостаток этого варианта состоит в том, что созданный посредством audit2allow модуль может вносить нежелательные изменения в работу SELinux, то есть мы теряем часть контроля над системой (сама Red Hat [не рекомендует использовать этот способ](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/sect-security-enhanced_linux-troubleshooting-fixing_problems#sect-Security-Enhanced_Linux-Fixing_Problems-Allowing_Access_audit2allow)). Создание же модулей вручную требует определённой квалификации, которая есть не у всех, что затрудняет сопровождение итоговой конфигурации.
 
     Кроме того, при замене DNS-сервера на новой машине опять потребуется установить модуль (то есть нужно где-то хранить файлы модуля либо воспроизводить ошибку для audit2allow).
 
