@@ -1,0 +1,25 @@
+---
+- name: Install Persona yum repository
+  yum:
+    name: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+    state: present
+
+- name: Install Persona server
+  yum:
+    name: Percona-Server-server-57
+    state: present
+
+- name: Copy config files
+  template:
+    src: "{{ item }}"
+    dest: /etc/my.cnf.d/{{ item | basename | regex_replace('\.j2$', '') }}
+  with_fileglob:
+    - "{{ role_path }}/templates/*.j2"
+  notify:
+    - Restart MySQL
+
+- name: Start MySQL
+  systemd:
+    name: mysql
+    state: started
+    enabled: yes
