@@ -1,7 +1,6 @@
 ---
 - hosts: all
   vars:
-    password_is_set: no
-    mysql_root_password: qwerty123
+    mysql_root_password: Qwerty123!
   roles:
     - mysql

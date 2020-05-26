@@ -5,6 +5,10 @@ datadir=/var/lib/mysql
 socket=/var/lib/mysql/mysql.sock
 symbolic-links=0
 
+{% if inventory_hostname == "master" %}
 server-id = 1
+{% elif inventory_hostname == "slave" %}
+server-id = 2
+{% endif %}
 innodb_file_per_table = 1
 skip-name-resolve

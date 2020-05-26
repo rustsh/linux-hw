@@ -4,9 +4,11 @@
     name: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
     state: present
 
-- name: Install Persona server
+- name: Install Persona server and MySQL-python
   yum:
-    name: Percona-Server-server-57
+    name:
+      - Percona-Server-server-57
+      - MySQL-python
     state: present
 
 - name: Copy config files
@@ -14,7 +16,7 @@
     src: "{{ item }}"
     dest: /etc/my.cnf.d/{{ item | basename | regex_replace('\.j2$', '') }}
   with_fileglob:
-    - "{{ role_path }}/templates/*.j2"
+    - "{{ role_path }}/templates/my.cnf.d/*.j2"
   notify:
     - Restart MySQL
 
