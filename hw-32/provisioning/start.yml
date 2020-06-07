@@ -2,5 +2,18 @@
 - hosts: all
   vars:
     mysql_root_password: Qwerty123!
+    repl_user: repl
+    repl_password: OtusLinux_2020
   roles:
-    - mysql
+    - mysql-install
+
+- hosts: master
+  roles:
+    - dump
+
+- hosts: slave
+  vars:
+    repl_user: repl
+    repl_password: OtusLinux_2020
+  roles:
+    - mysql-repl

@@ -1,0 +1,22 @@
+---
+- name: Read dump from master
+  command: cat /opt/master.sql
+  register: dump
+  delegate_to: master
+
+- name: Copy dump to slave
+  copy:
+    content: "{{ dump.stdout }}"
+    dest: /opt/master.sql
+
+- name: Delete line with gtid_purged from dump
+  lineinfile:
+    path: /opt/master.sql
+    state: absent
+    regexp: GTID_PURGED
+
+- name: Restore all databases from dump
+  mysql_db:
+    state: import
+    name: all
+    target: /opt/master.sql

@@ -1,0 +1,20 @@
+---
+- name: Copy database 'bet' dump to server
+  copy:
+    src: bet.dmp
+    dest: /opt/bet.dmp
+
+- name: Restore database 'bet' from dump
+  mysql_db:
+    name: bet
+    state: import
+    target: /opt/bet.dmp
+
+- name: Dump all databases
+  mysql_db:
+    state: dump
+    name: all
+    ignore_tables:
+      - bet.events_on_demand
+      - bet.v_same_event
+    target: /opt/master.sql

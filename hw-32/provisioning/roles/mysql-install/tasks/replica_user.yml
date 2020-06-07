@@ -1,0 +1,8 @@
+---
+- name: Create user for replication
+  mysql_user:
+    name: "{{ repl_user }}"
+    password: "{{ repl_password }}"
+    host: "%"
+    priv: "*.*:REPLICATION SLAVE"
+    state: present
