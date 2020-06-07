@@ -10,11 +10,10 @@
     state: import
     target: /opt/bet.dmp
 
-- name: Dump all databases
-  mysql_db:
-    state: dump
-    name: all
-    ignore_tables:
-      - bet.events_on_demand
-      - bet.v_same_event
-    target: /opt/master.sql
+- name: Create user for replication
+  mysql_user:
+    name: "{{ repl_user }}"
+    password: "{{ repl_password }}"
+    host: "%"
+    priv: "*.*:REPLICATION SLAVE"
+    state: present

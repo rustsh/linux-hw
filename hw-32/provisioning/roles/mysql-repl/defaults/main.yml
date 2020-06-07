@@ -1,0 +1,5 @@
+---
+master_host: 192.168.11.150
+master_port: 3306
+repl_user: repl
+repl_password: OtusLinux_2020

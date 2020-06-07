@@ -10,15 +10,17 @@ Vagrant.configure("2") do |config|
   config.vm.define "master" do |master|
     master.vm.hostname = "master"
     master.vm.network "private_network", ip: "192.168.11.150"
+    master.vm.provision "ansible" do |ansible|
+      ansible.playbook = "provisioning/start_master.yml"
+    end
   end
 
   config.vm.define "slave" do |slave|
     slave.vm.hostname = "slave"
     slave.vm.network "private_network", ip: "192.168.11.151"
-  end
-
-  config.vm.provision "ansible" do |ansible|
-    ansible.playbook = "provisioning/start.yml"
+    slave.vm.provision "ansible" do |ansible|
+      ansible.playbook = "provisioning/start_slave.yml"
+    end
   end
 
 end

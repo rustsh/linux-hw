@@ -1,0 +1,7 @@
+---
+- hosts: slave
+  vars_files:
+    - secrets.yml
+  roles:
+    - mysql-install
+    - mysql-repl
