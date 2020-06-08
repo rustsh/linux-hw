@@ -1,10 +1,10 @@
 ---
-- name: Install Persona yum repository
+- name: Install Percona yum repository
   yum:
     name: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
     state: present
 
-- name: Install Persona server and MySQL-python
+- name: Install Percona server and MySQL-python
   yum:
     name:
       - Percona-Server-server-57

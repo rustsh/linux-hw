@@ -17,3 +17,4 @@
     host: "%"
     priv: "*.*:REPLICATION SLAVE"
     state: present
+  no_log: yes

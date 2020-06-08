@@ -1,5 +1,5 @@
 ---
-- name: Set master for replication
+- name: Set master for replication and start slave
   mysql_replication:
     mode: changemaster
     master_host: "{{ master_host }}"
@@ -7,7 +7,3 @@
     master_user: "{{ repl_user }}"
     master_password: "{{ repl_password }}"
     master_auto_position: yes
-
-- name: Start slave
-  mysql_replication:
-    mode: startslave
