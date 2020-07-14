@@ -1,0 +1,22 @@
+---
+- name: Generate an OpenSSH keypair
+  become: no
+  openssh_keypair:
+    path: "{{ role_path }}/files/pg_id_rsa"
+  delegate_to: localhost
+
+- name: Set authorized key for postgres user
+  authorized_key:
+    user: postgres
+    state: present
+    key: '{{ item }}'
+  with_file:
+    - "{{ role_path }}/files/pg_id_rsa.pub"
+
+- name: Copy private key to host
+  copy:
+    src: pg_id_rsa
+    dest: /var/lib/pgsql/.ssh/id_rsa
+    owner: postgres
+    group: postgres
+    mode: 0600

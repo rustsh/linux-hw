@@ -3,3 +3,4 @@
   hosts: all
   roles:
     - pgsql-install
+    - pgsql-replica
