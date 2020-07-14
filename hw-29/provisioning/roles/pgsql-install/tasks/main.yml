@@ -1,0 +1,4 @@
+---
+- include: install_pg.yml
+- include: prepare_vm.yml
+- include: config_pg.yml

@@ -1,0 +1,31 @@
+---
+- name: Add EPEL repo
+  yum:
+    name: epel-release
+    state: present
+
+- name: Install pip
+  yum:
+    name: python-pip
+    state: present
+
+- name: Upgrade pip
+  pip:
+    name: pip
+    extra_args: --upgrade
+
+- name: Install psycopg2 to manage PostgreSQL
+  pip:
+    name: psycopg2-binary
+    state: present
+
+- name: Install libsemanage-python
+  yum:
+    name: libsemanage-python
+    state: present
+
+- name: Patch SELinux for PostgreSQL
+  seboolean:
+    name: httpd_can_network_connect_db
+    state: yes
+    persistent: yes

@@ -1,0 +1,21 @@
+---
+- name: Install PostgreSQL repo
+  yum:
+    name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    state: present
+
+- name: Install PostgreSQL
+  yum:
+    name: postgresql11-server
+    state: present
+
+- name: Init PostgreSQL
+  command:
+    cmd: /usr/pgsql-11/bin/postgresql-11-setup initdb
+    creates: "{{ db_path }}/base"
+
+- name: Start PostgreSQL
+  systemd:
+    name: postgresql-11
+    state: started
+    enabled: yes

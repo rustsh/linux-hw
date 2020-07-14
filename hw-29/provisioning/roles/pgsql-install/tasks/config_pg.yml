@@ -1,0 +1,39 @@
+---
+- name: Copy postgresql.conf
+  copy:
+    src: postgresql.conf
+    dest: "{{ db_path }}/postgresql.conf"
+  notify:
+    - Restart postgresql
+
+- name: Allow net connections to postgresql
+  replace:
+    path: "{{ db_path }}/pg_hba.conf"
+    regexp: '127\.0\.0\.1'
+    replace: '0.0.0.0'
+  notify:
+    - Restart postgresql
+
+- name: Set password for user postgres
+  become_user: postgres  
+  postgresql_user:
+    db: postgres
+    name: postgres
+    password: "{{ pg_password }}"
+    expires: infinity
+  no_log: yes
+
+- name: Copy pg_hba.conf
+  copy:
+    src: pg_hba.conf
+    dest: "{{ db_path }}/pg_hba.conf"
+  notify:
+    - Restart postgresql
+
+- name: Copy .pgpass for postgres
+  template:
+    src: postgres_pgpass.j2
+    dest: /var/lib/pgsql/.pgpass
+    owner: postgres
+    group: postgres
+    mode: "0600"

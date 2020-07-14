@@ -1,0 +1,5 @@
+---
+- name: PostgreSQL
+  hosts: all
+  roles:
+    - pgsql-install
