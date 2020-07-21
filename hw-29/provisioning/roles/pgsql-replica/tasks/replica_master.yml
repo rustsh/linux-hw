@@ -1,0 +1,29 @@
+---
+- name: Create postgresql user for replication
+  become_user: postgres  
+  postgresql_user:
+    name: "{{ repluser_login }}"
+    password: "{{ repluser_password }}"
+    role_attr_flags: REPLICATION
+    expires: infinity
+  no_log: yes
+
+- name: Add password of replication user to .pgpass
+  lineinfile:
+    path: /var/lib/pgsql/.pgpass
+    line: "*:*:*:{{ repluser_login }}:{{ repluser_password }}"
+    create: yes
+
+- name: Copy pg_hba.conf with settings for replication
+  template:
+    src: pg_hba.conf.j2
+    dest: "{{ db_path }}/pg_hba.conf"
+  notify:
+    - Restart postgresql
+
+- name: Copy postgresql.conf with settings for replication
+  template:
+    src: postgresql.conf.j2
+    dest: "{{ db_path }}/postgresql.conf"
+  notify:
+    - Restart postgresql

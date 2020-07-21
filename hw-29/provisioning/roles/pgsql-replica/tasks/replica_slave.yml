@@ -1,0 +1,35 @@
+---
+- name: Stop PosgreSQL
+  systemd:
+    name: postgresql-11
+    state: stopped
+
+- name: Add password of replication user to .pgpass
+  lineinfile:
+    path: /var/lib/pgsql/.pgpass
+    line: "*:*:*:{{ repluser_login }}:{{ repluser_password }}"
+    create: yes
+
+- name: Clean all PosgreSQL data
+  file:
+    path: "{{ db_path }}/"
+    state: absent
+
+- name: Create copy of master
+  become_user: postgres
+  command:
+    cmd: pg_basebackup -h {{ master_host_ip }} -U {{ repluser_login }} -D {{ db_path }}/ -X stream -R
+
+- name: Copy pg_hba.conf with settings for replication
+  template:
+    src: pg_hba.conf.j2
+    dest: "{{ db_path }}/pg_hba.conf"
+  notify:
+    - Restart postgresql
+
+- name: Copy postgresql.conf with settings for replication
+  template:
+    src: postgresql.conf.j2
+    dest: "{{ db_path }}/postgresql.conf"
+  notify:
+    - Restart postgresql

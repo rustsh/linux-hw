@@ -1,6 +1,12 @@
 ---
 - name: PostgreSQL
   hosts: all
+  vars:
+    pg_password: qwerty123
+    master_host_ip: 192.168.11.150
+    slave_host_ip: 192.168.11.151
+    repluser_login: repluser
+    repluser_password: asdf456
   roles:
     - pgsql-install
     - pgsql-replica

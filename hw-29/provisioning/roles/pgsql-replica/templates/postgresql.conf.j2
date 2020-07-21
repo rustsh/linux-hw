@@ -181,7 +181,7 @@ effective_io_concurrency = 2		# 1-1000; 0 disables prefetching
 
 # - Settings -
 
-#wal_level = replica			# minimal, replica, or logical
+wal_level = replica			# minimal, replica, or logical
 					# (change requires restart)
 fsync = on				# flush data to disk for crash safety
 					# (turning this off can cause
@@ -236,9 +236,9 @@ checkpoint_completion_target = 0.7	# checkpoint target duration, 0.0 - 1.0
 
 # Set these on the master and on any standby that will send replication data.
 
-#max_wal_senders = 10		# max number of walsender processes
+max_wal_senders = 2		# max number of walsender processes
 				# (change requires restart)
-#wal_keep_segments = 0		# in logfile segments; 0 disables
+wal_keep_segments = 32		# in logfile segments; 0 disables
 #wal_sender_timeout = 60s	# in milliseconds; 0 disables
 
 #max_replication_slots = 10	# max number of replication slots
@@ -260,7 +260,11 @@ checkpoint_completion_target = 0.7	# checkpoint target duration, 0.0 - 1.0
 
 # These settings are ignored on a master server.
 
+{% if inventory_hostname == "master" %}
 #hot_standby = on			# "off" disallows queries during recovery
+{% elif inventory_hostname == "slave" %}
+hot_standby = on			# "off" disallows queries during recovery
+{% endif %}
 					# (change requires restart)
 #max_standby_archive_delay = 30s	# max delay before canceling queries
 					# when reading WAL from archive;

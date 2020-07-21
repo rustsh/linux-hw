@@ -1,2 +1,6 @@
 ---
-- include: ssh_keys.yml
+- include: replica_master.yml
+  when: inventory_hostname == "master"
+
+- include: replica_slave.yml
+  when: inventory_hostname == "slave"
