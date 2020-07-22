@@ -18,7 +18,7 @@
 - name: Create copy of master
   become_user: postgres
   command:
-    cmd: pg_basebackup -h {{ master_host_ip }} -U {{ repluser_login }} -D {{ db_path }}/ -X stream -R
+    cmd: pg_basebackup -h {{ master_host_ip }} -U {{ repluser_login }} -D {{ db_path }}/ -X stream -S {{ slot_name }} -R
 
 - name: Copy pg_hba.conf with settings for replication
   template:

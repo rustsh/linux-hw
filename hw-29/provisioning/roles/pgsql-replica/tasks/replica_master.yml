@@ -27,3 +27,8 @@
     dest: "{{ db_path }}/postgresql.conf"
   notify:
     - Restart postgresql
+
+- name: Create slot for replication
+  become_user: postgres
+  postgresql_query:
+    query: SELECT * FROM pg_create_physical_replication_slot('{{ slot_name }}');
