@@ -1,0 +1,7 @@
+---
+- name: Set PostgreSQL backup
+  hosts: backup
+  vars:
+    master_host_ip: 10.10.10.10
+  roles:
+    - barman

@@ -1,0 +1,15 @@
+---
+- name: Add EPEL repo
+  yum:
+    name: epel-release
+    state: present
+
+- name: Install barman
+  yum:
+    name: barman
+    state: present
+
+- name: Fetch files
+  copy:
+    src: barman.conf
+    dest: /etc/barman/barman.conf
