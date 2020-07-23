@@ -1,6 +1,11 @@
 ---
-db_path: /var/lib/pgsql/11/data
+# hosts
 master_host_ip: 10.10.10.10
+
+# credentials
 repluser_login: repluser
 repluser_password: asdf456
+
+# specific variables
+db_path: /var/lib/pgsql/11/data
 slot_name: node_a_slot
