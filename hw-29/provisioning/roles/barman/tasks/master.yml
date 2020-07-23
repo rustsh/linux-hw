@@ -1,0 +1,50 @@
+---
+- name: Create user {{ barman_login }} in PostgreSQL
+  become_user: postgres  
+  postgresql_user:
+    name: "{{ barman_login }}"
+    password: "{{ barman_password }}"
+    role_attr_flags: SUPERUSER
+    expires: infinity
+  no_log: yes
+
+- name: Create {{ streaming_barman_login }} user
+  become_user: postgres  
+  postgresql_user:
+    name: "{{ streaming_barman_login }}"
+    password: "{{ streaming_barman_password }}"
+    role_attr_flags: REPLICATION
+    expires: infinity
+  no_log: yes
+
+- name: Allow {{ streaming_barman_login }} connect to master
+  lineinfile:
+    path: "{{ db_path }}/pg_hba.conf"
+    insertafter: '^host    replication'
+    line: host    replication     {{ streaming_barman_login }}     {{ backup_host_ip }}/32            md5
+  notify:
+    - Restart postgresql
+
+- name: Ensure wal_level parameter is set to 'replica'
+  lineinfile:
+    path: "{{ db_path }}/postgresql.conf"
+    regexp: '^#wal_level'
+    line: wal_level = replica
+  notify:
+    - Restart postgresql
+
+- name: Set max_wal_senders parameter
+  lineinfile:
+    path: "{{ db_path }}/postgresql.conf"
+    regexp: '^#max_wal_senders'
+    line: max_wal_senders = 5
+  notify:
+    - Restart postgresql
+
+- name: Set max_replication_slots parameter
+  lineinfile:
+    path: "{{ db_path }}/postgresql.conf"
+    regexp: '^#max_replication_slots'
+    line: max_replication_slots = 5
+  notify:
+    - Restart postgresql

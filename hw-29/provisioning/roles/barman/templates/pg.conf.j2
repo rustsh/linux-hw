@@ -1,0 +1,6 @@
+[pg]
+description = "Our main PostgreSQL server"
+conninfo = host={{ master_host_ip }} user={{ barman_login }} dbname=postgres
+streaming_conninfo = host={{ master_host_ip }} user={{ streaming_barman_login }} dbname=postgres
+backup_method = postgres
+# backup_method = rsync

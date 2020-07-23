@@ -1,7 +1,8 @@
 ---
-- name: Set PostgreSQL backup
+- name: Install Barman
   hosts: backup
-  vars:
-    master_host_ip: 10.10.10.10
+  vars_files:
+    - ../vars.yml
   roles:
+    - pgsql-install
     - barman

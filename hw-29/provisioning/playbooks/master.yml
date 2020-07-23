@@ -6,3 +6,4 @@
   roles:
     - pgsql-install
     - pgsql-replica-master
+    - barman

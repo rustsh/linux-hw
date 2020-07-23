@@ -1,0 +1,28 @@
+---
+- name: Ensure EPEL repo is added
+  yum:
+    name: epel-release
+    state: present
+
+- name: Install barman
+  yum:
+    name: barman
+    state: present
+
+- name: Copy .pgpass for {{ barman_login }}
+  template:
+    src: barman_pgpass.j2
+    dest: /var/lib/barman/.pgpass
+    owner: barman
+    group: barman
+    mode: 0600
+
+- name: Copy barman.conf to backup server
+  template:
+    src: barman.conf.j2
+    dest: /etc/barman.conf
+
+- name: Copy pg.conf to backup server
+  template:
+    src: pg.conf.j2
+    dest: /etc/barman.d/pg.conf
