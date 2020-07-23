@@ -28,7 +28,16 @@
   notify:
     - Restart postgresql
 
+- name: Check if slot for replication exists
+  become_user: postgres
+  postgresql_query:
+    db: postgres
+    query: SELECT slot_name FROM pg_replication_slots where slot_name = '{{ slot_name }}';
+  register: replica_slot
+
 - name: Create slot for replication
   become_user: postgres
   postgresql_query:
+    db: postgres
     query: SELECT * FROM pg_create_physical_replication_slot('{{ slot_name }}');
+  when: replica_slot.query_result | length == 0
