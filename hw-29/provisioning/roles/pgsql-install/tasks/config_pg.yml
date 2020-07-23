@@ -6,14 +6,6 @@
   notify:
     - Restart postgresql
 
-- name: Allow net connections to postgresql
-  replace:
-    path: "{{ db_path }}/pg_hba.conf"
-    regexp: '127\.0\.0\.1'
-    replace: '0.0.0.0'
-  notify:
-    - Restart postgresql
-
 - name: Set password for user postgres
   become_user: postgres  
   postgresql_user:
