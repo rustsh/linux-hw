@@ -1,0 +1,10 @@
+---
+- name: Add EPEL repo
+  yum:
+    name: epel-release
+    state: present
+
+- name: Install barman
+  yum:
+    name: barman
+    state: present
