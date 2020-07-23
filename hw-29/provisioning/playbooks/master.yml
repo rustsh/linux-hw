@@ -1,0 +1,8 @@
+---
+- name: Install PostgreSQL and set replication on master
+  hosts: master
+  vars_files:
+    - ../vars.yml
+  roles:
+    - pgsql-install
+    - pgsql-replica-master

@@ -260,11 +260,7 @@ wal_keep_segments = 1000		# in logfile segments; 0 disables
 
 # These settings are ignored on a master server.
 
-{% if inventory_hostname == "master" %}
 #hot_standby = on			# "off" disallows queries during recovery
-{% elif inventory_hostname == "slave" %}
-hot_standby = on			# "off" disallows queries during recovery
-{% endif %}
 					# (change requires restart)
 #max_standby_archive_delay = 30s	# max delay before canceling queries
 					# when reading WAL from archive;

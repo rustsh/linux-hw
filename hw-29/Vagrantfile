@@ -3,27 +3,20 @@
 
 Vagrant.configure("2") do |config|
   config.vm.box = "centos/7"
-  
 
   config.vm.define "master" do |master|
     master.vm.hostname = "master"
     master.vm.network "private_network", ip: "10.10.10.10"
-    master.vm.provider "virtualbox" do |vb|
-      vb.memory = 1024
-    end
     master.vm.provision "ansible" do |ansible|
-      ansible.playbook = "provisioning/playbooks/postgres.yml"
+      ansible.playbook = "provisioning/playbooks/master.yml"
     end
   end
 
   config.vm.define "slave" do |slave|
     slave.vm.hostname = "slave"
     slave.vm.network "private_network", ip: "10.10.10.20"
-    slave.vm.provider "virtualbox" do |vb|
-      vb.memory = 1024
-    end
     slave.vm.provision "ansible" do |ansible|
-      ansible.playbook = "provisioning/playbooks/postgres.yml"
+      ansible.playbook = "provisioning/playbooks/slave.yml"
     end
   end
 
@@ -31,6 +24,7 @@ Vagrant.configure("2") do |config|
     backup.vm.hostname = "backup"
     backup.vm.network "private_network", ip: "10.10.10.30"
     backup.vm.provision "ansible" do |ansible|
+      ansible.limit = "all"
       ansible.playbook = "provisioning/playbooks/backup.yml"
     end
   end

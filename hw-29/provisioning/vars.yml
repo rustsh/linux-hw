@@ -1,0 +1,11 @@
+---
+# hosts
+master_host_ip: 10.10.10.10
+slave_host_ip: 10.10.10.20
+backup_host_ip: 10.10.10.30
+
+# credentials
+pg_password: qwerty123
+repluser_login: repluser
+repluser_password: asdf456
+barman_password: barmanpassword

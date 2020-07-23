@@ -85,9 +85,5 @@ host    all             all             0.0.0.0/32            md5
 # Allow replication connections from localhost, by a user with the
 # replication privilege.
 local   replication     all                                     md5
-{% if inventory_hostname == "master" %}
-host    replication     repluser             {{ slave_host_ip }}/32            md5
-{% elif inventory_hostname == "slave" %}
 host    replication     repluser             {{ master_host_ip }}/32            md5
-{% endif %}
 # host    replication     all             ::1/128                 ident
