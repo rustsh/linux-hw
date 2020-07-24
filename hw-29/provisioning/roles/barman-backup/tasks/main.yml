@@ -42,9 +42,14 @@
   shell: "barman check pg | grep 'WAL archive: FAILED' | cat"
   register: wal_archive
 
+# For some reason it fails on the first run
 - name: Force PostgreSQL to switch WAL file and trigger the archiving process
   become_user: barman
-  command: barman switch-wal --force --archive --archive-timeout 120 pg
+  command: barman switch-wal --force --archive pg
+  register: result
+  until: result is not failed
+  retries: 3
+  delay: 5
   when: wal_archive.stdout != ""
 
 ### Allow connect from backup server to master server via SSH ###
