@@ -36,3 +36,13 @@
   template:
     src: pg.conf.j2
     dest: /etc/barman.d/pg.conf
+
+- name: Check if continuous archiving is on and properly working
+  become_user: barman
+  shell: "barman check pg | grep 'WAL archive: FAILED' | cat"
+  register: wal_archive
+
+- name: Force PostgreSQL to switch WAL file and trigger the archiving process
+  become_user: barman
+  command: barman switch-wal --force --archive --archive-timeout 60 pg
+  when: wal_archive.stdout != ""
