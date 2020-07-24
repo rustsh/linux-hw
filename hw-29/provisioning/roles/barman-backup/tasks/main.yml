@@ -6,7 +6,7 @@
 
 - name: Install PostgreSQL client
   yum:
-    name: postgresql11
+    name: postgresql{{ pg_version }}
     state: present
 
 - name: Ensure EPEL repo is added

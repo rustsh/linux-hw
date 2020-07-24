@@ -6,7 +6,7 @@
 
 - name: Install PostgreSQL
   yum:
-    name: postgresql11-server
+    name: postgresql{{ pg_version }}-server
     state: present
 
 - name: Init PostgreSQL

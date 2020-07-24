@@ -1,4 +1,7 @@
 ---
+# versions
+pg_version: 11
+
 # hosts
 master_host_ip: 10.10.10.10
 slave_host_ip: 10.10.10.20

@@ -10,3 +10,4 @@ streaming_barman_password: streaming_barman_password
 
 # specific variables
 db_path: /var/lib/pgsql/11/data
+pg_version: 11
