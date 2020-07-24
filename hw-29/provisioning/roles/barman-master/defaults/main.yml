@@ -1,6 +1,5 @@
 ---
 # hosts
-master_host_ip: 10.10.10.10
 backup_host_ip: 10.10.10.30
 
 # credentials

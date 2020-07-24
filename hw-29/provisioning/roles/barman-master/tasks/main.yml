@@ -25,8 +25,8 @@
     - Restart postgresql
 
 - name: Copy postgresql.conf with settings for replication
-  template:
-    src: postgresql.conf.j2
+  copy:
+    src: postgresql.conf
     dest: "{{ db_path }}/postgresql.conf"
   notify:
     - Restart postgresql

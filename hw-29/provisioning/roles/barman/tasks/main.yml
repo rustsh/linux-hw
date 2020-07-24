@@ -1,6 +1,0 @@
----
-- include: master.yml
-  when: inventory_hostname == "master"
-
-- include: backup.yml
-  when: inventory_hostname == "backup"
