@@ -25,26 +25,9 @@
   notify:
     - Restart postgresql
 
-- name: Ensure wal_level parameter is set to 'replica'
-  lineinfile:
-    path: "{{ db_path }}/postgresql.conf"
-    regexp: '^#wal_level'
-    line: wal_level = replica
-  notify:
-    - Restart postgresql
-
-- name: Set max_wal_senders parameter
-  lineinfile:
-    path: "{{ db_path }}/postgresql.conf"
-    regexp: '^#max_wal_senders'
-    line: max_wal_senders = 5
-  notify:
-    - Restart postgresql
-
-- name: Set max_replication_slots parameter
-  lineinfile:
-    path: "{{ db_path }}/postgresql.conf"
-    regexp: '^#max_replication_slots'
-    line: max_replication_slots = 5
+- name: Copy postgresql.conf with settings for replication
+  template:
+    src: postgresql.conf.j2
+    dest: "{{ db_path }}/postgresql.conf"
   notify:
     - Restart postgresql
