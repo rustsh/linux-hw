@@ -20,7 +20,6 @@
 - name: Allow {{ streaming_barman_login }} connect to master
   lineinfile:
     path: "{{ db_path }}/pg_hba.conf"
-    insertafter: '^host    replication'
     line: host    replication     {{ streaming_barman_login }}     {{ backup_host_ip }}/32            md5
   notify:
     - Restart postgresql

@@ -14,10 +14,10 @@
     line: "*:*:*:{{ repluser_login }}:{{ repluser_password }}"
     create: yes
 
-- name: Copy pg_hba.conf with settings for replication
-  template:
-    src: pg_hba.conf.j2
-    dest: "{{ db_path }}/pg_hba.conf"
+- name: Allow {{ repluser_login }} connect to master
+  lineinfile:
+    path: "{{ db_path }}/pg_hba.conf"
+    line: host    replication     {{ repluser_login }}             {{ slave_host_ip }}/32            md5
   notify:
     - Restart postgresql
 

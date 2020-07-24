@@ -20,10 +20,10 @@
   command:
     cmd: pg_basebackup -h {{ master_host_ip }} -U {{ repluser_login }} -D {{ db_path }}/ -X stream -S {{ slot_name }} -R
 
-- name: Copy pg_hba.conf with settings for replication
-  template:
-    src: pg_hba.conf.j2
-    dest: "{{ db_path }}/pg_hba.conf"
+- name: Allow {{ repluser_login }} connect to slave
+  lineinfile:
+    path: "{{ db_path }}/pg_hba.conf"
+    line: host    replication     {{ repluser_login }}             {{ master_host_ip }}/32            md5
   notify:
     - Restart postgresql
 
