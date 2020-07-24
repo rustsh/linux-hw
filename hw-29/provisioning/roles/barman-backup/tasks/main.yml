@@ -9,7 +9,7 @@
     name: postgresql{{ pg_version }}
     state: present
 
-- name: Ensure EPEL repo is added
+- name: Add EPEL repo
   yum:
     name: epel-release
     state: present
