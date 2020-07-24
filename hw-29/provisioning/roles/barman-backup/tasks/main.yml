@@ -44,5 +44,28 @@
 
 - name: Force PostgreSQL to switch WAL file and trigger the archiving process
   become_user: barman
-  command: barman switch-wal --force --archive --archive-timeout 60 pg
+  command: barman switch-wal --force --archive --archive-timeout 120 pg
   when: wal_archive.stdout != ""
+
+### Allow connect from backup server to master server via SSH ###
+
+- name: Create directory for SSH keypair
+  file:
+    path: /var/lib/barman/.ssh
+    state: directory
+    owner: barman
+    group: barman
+    mode: 0700
+
+- name: Generate SSH key for barman user
+  become_user: barman
+  openssh_keypair:
+    path: ~/.ssh/id_rsa
+  register: barman_pub_key
+
+- name: Set authorized key for postgres user
+  authorized_key:
+    user: postgres
+    state: present
+    key: "{{ barman_pub_key.public_key }}"
+  delegate_to: master
