@@ -1,3 +1,6 @@
 ---
 - name: Reread exports
   command: exportfs -r
+
+- name: Reload firewalld
+  command: firewall-cmd --reload

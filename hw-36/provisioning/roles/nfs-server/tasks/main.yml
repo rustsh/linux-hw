@@ -1,4 +1,22 @@
 ---
+- name: Start firewalld on server
+  systemd:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: Config firewalld for NFS on server
+  firewalld:
+    service: "{{ item }}"
+    permanent: yes
+    state: enabled
+  loop:
+    - nfs
+    - mountd
+    - rpc-bind
+  notify:
+    - Reload firewalld
+
 - name: Check if NFS Utils is intalled
   yum:
     name: nfs-utils
