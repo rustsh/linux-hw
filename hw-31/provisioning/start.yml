@@ -1,0 +1,7 @@
+---
+- name: Post server
+  hosts: all
+  tasks:
+    - name: Say hello
+      debug:
+        msg: Hello!
