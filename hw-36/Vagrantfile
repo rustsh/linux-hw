@@ -4,18 +4,18 @@
 Vagrant.configure("2") do |config|
   config.vm.box = "centos/7"
 
-  config.vm.define "nfs-server" do |nfs-server|
-    nfs-server.vm.hostname = "nfs-server"
-    nfs-server.vm.network "private-network", ip: "10.10.10.10"
-    nfs-server.vm.provision "ansible" do |ansible|
+  config.vm.define "nfs_server" do |nfs_server|
+    nfs_server.vm.hostname = "nfs-server"
+    nfs_server.vm.network "private_network", ip: "10.10.10.10"
+    nfs_server.vm.provision "ansible" do |ansible|
       ansible.playbook = "provisioning/start.yml"
     end
   end
 
-  config.vm.define "nfs-client" do |nfs-client|
-    nfs-client.vm.hostname = "nfs-client"
-    nfs-client.vm.network "private-network", ip: "10.10.10.20"
-    nfs-client.vm.provision "ansible" do |ansible|
+  config.vm.define "nfs_client" do |nfs_client|
+    nfs_client.vm.hostname = "nfs-client"
+    nfs_client.vm.network "private_network", ip: "10.10.10.20"
+    nfs_client.vm.provision "ansible" do |ansible|
       ansible.playbook = "provisioning/start.yml"
     end
   end
