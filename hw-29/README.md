@@ -87,7 +87,12 @@
     max_replication_slots = 5
     ```
 
-4. Создаётся слот для репликации, если он отсутствует.
+4. Создаётся слот для репликации, если он отсутствует. Запрос для создания слота:
+
+    ```sql
+    SELECT * FROM pg_create_physical_replication_slot('node_a_slot');
+    ```
+
 5. После изменения файлов **postgresql.conf** и **pg_hba.conf** сервер PostgreSQL перезапускается.
 
 Настройка мастера для резервного копирования (роль [barman-master](provisioning/roles/barman-master)):
