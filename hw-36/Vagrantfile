@@ -1,0 +1,23 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "centos/7"
+
+  config.vm.define "nfs-server" do |nfs-server|
+    nfs-server.vm.hostname = "nfs-server"
+    nfs-server.vm.network "private-network", ip: "10.10.10.10"
+    nfs-server.vm.provision "ansible" do |ansible|
+      ansible.playbook = "provisioning/start.yml"
+    end
+  end
+
+  config.vm.define "nfs-client" do |nfs-client|
+    nfs-client.vm.hostname = "nfs-client"
+    nfs-client.vm.network "private-network", ip: "10.10.10.20"
+    nfs-client.vm.provision "ansible" do |ansible|
+      ansible.playbook = "provisioning/start.yml"
+    end
+  end
+
+end
