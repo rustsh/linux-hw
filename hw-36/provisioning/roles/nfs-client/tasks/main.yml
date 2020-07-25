@@ -1,0 +1,23 @@
+---
+- name: Check if NFS Utils is intalled
+  yum:
+    name: nfs-utils
+    state: present
+
+- name: Check if rpcbind is running
+  systemd:
+    name: rpcbind
+    state: started
+    enabled: yes
+
+- name: Create folder to mount
+  file:
+    path: "{{ mnt_path }}"
+    state: directory
+
+- name: Mount share folder
+  mount:
+    path: "{{ mnt_path }}"
+    src: "{{ server_ip }}:{{ share_path }}"
+    fstype: nfs
+    state: mounted

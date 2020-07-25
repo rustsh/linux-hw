@@ -1,0 +1,27 @@
+---
+- name: Check if NFS Utils is intalled
+  yum:
+    name: nfs-utils
+    state: present
+
+- name: Check if rpcbind and nfs-server is running
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - rpcbind
+    - nfs-server
+
+- name: Create share folder
+  file:
+    path: "{{ share_path }}"
+    state: directory
+    mode: 0777
+
+- name: Copy exports
+  template:
+    src: exports.j2
+    dest: /etc/exports
+  notify:
+    - Reread exports

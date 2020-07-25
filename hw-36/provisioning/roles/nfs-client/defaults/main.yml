@@ -1,0 +1,4 @@
+---
+server_ip: 10.10.10.10
+share_path: /var/nfs_share
+mnt_path: /mnt/nfs

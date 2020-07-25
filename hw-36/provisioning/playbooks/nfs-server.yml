@@ -1,0 +1,5 @@
+---
+- name: Config NFS server
+  hosts: server
+  roles:
+    - nfs-server
