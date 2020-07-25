@@ -11,7 +11,7 @@
     permanent: yes
     state: enabled
   loop:
-    - nfs
+    - nfs3
     - mountd
     - rpc-bind
   notify:
@@ -31,9 +31,9 @@
     - rpcbind
     - nfs-server
 
-- name: Create share folder
+- name: Create folder to share
   file:
-    path: "{{ share_path }}"
+    path: "{{ share_path }}/upload"
     state: directory
     mode: 0777
 

@@ -1,1 +1,2 @@
-{{ share_path }} {{ client_ip }}(rw,sync,no_root_squash)
+{{ share_path }} {{ client_ip }}(ro,sync,root_squash,no_all_squash)
+{{ share_path }}/upload {{ client_ip }}(rw,sync,root_squash,no_all_squash)

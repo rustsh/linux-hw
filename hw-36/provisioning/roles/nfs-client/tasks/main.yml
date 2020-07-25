@@ -15,9 +15,18 @@
     path: "{{ mnt_path }}"
     state: directory
 
-- name: Mount share folder
+- name: Mount main shared folder
   mount:
     path: "{{ mnt_path }}"
     src: "{{ server_ip }}:{{ share_path }}"
     fstype: nfs
+    opts: vers=3,proto=udp,hard,intr,_netdev,noauto,x-systemd.automount
+    state: mounted
+
+- name: Mount upload folder
+  mount:
+    path: "{{ mnt_path }}/upload"
+    src: "{{ server_ip }}:{{ share_path }}/upload"
+    fstype: nfs
+    opts: vers=3,proto=udp,hard,intr,_netdev,noauto,x-systemd.automount
     state: mounted
