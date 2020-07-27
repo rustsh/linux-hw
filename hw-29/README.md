@@ -327,7 +327,7 @@ otus=# select * from students;
 (3 rows)
 ```
 
-Теперь зайдём на машину slave, также под пользователем postreg откроем psql и проверим статистику приёмника WAL:
+Теперь зайдём на машину slave, также под пользователем postgres откроем psql и проверим статистику приёмника WAL:
 
 ```console
 [vagrant@slave ~]$ sudo su - postgres
