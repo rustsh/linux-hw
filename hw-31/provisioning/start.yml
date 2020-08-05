@@ -1,7 +1,6 @@
 ---
-- name: Post server
+- name: Config mail server
   hosts: all
-  tasks:
-    - name: Say hello
-      debug:
-        msg: Hello!
+  gather_facts: yes
+  roles:
+    - mail

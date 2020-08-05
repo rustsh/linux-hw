@@ -1,0 +1,46 @@
+---
+- name: Install postfix and dovecot
+  yum:
+    name:
+      - dovecot
+      - postfix
+    state: present
+
+- name: Create user for mail
+  user:
+    name: "{{ mail_user }}"
+    shell: /sbin/nologin
+    state: present
+
+- name: Copy postfix config file
+  template:
+    src: main.cf.j2
+    dest: /etc/postfix/main.cf
+  notify:
+    - Restart postfix
+
+- name: Check if postfix is started and enabled
+  systemd:
+    name: postfix
+    state: started
+    enabled: yes
+
+- name: Copy dovecot config file
+  copy:
+    src: dovecot/dovecot.conf
+    dest: /etc/dovecot/dovecot.conf
+  notify:
+    - Restart dovecot
+
+- name: Copy dovecot conf.d files
+  copy:
+    src: dovecot/conf.d/
+    dest: /etc/dovecot/conf.d/
+  notify:
+    - Restart dovecot
+
+- name: Check if dovecot is started and enabled
+  systemd:
+    name: dovecot
+    state: started
+    enabled: yes
