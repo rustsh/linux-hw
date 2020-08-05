@@ -1,0 +1,22 @@
+---
+- name: Create group for mail user
+  group:
+    name: "{{ mail_user }}"
+    gid: 5000
+    state: present
+
+- name: Create mail user
+  user:
+    name: "{{ mail_user }}"
+    comment: User to manage mailboxes
+    shell: /sbin/nologin
+    uid: 5000
+    group: "{{ mail_user }}"
+    state: present
+
+- name: Create directory for virtual domain
+  file:
+    path: /var/spool/mail/vhosts/{{ virtual_domain }}
+    state: directory
+    owner: "{{ mail_user }}"
+    group: "{{ mail_user }}"

@@ -1,8 +1,6 @@
 ---
-server_ip: "{{ ansible_facts.eth1.ipv4.address }}"
 server_fqdn: "{{ ansible_facts.fqdn }}"
-server_hostname: "{{ ansible_facts.hostname }}"
 domain_name: "{{ ansible_facts.domain }}"
 mynetworks: 192.168.0.0/16
-
+virtual_domain: virtual.otus
 mail_user: vmail

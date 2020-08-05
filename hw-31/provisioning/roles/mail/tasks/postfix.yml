@@ -1,0 +1,33 @@
+---
+- name: Check if postfix is installed
+  yum:
+    name: postfix
+    state: present
+
+- name: Copy postfix config file
+  template:
+    src: main.cf.j2
+    dest: /etc/postfix/main.cf
+  notify:
+    - Restart postfix
+
+- name: Copy vmailbox file
+  template:
+    src: vmailbox.j2
+    dest: /etc/postfix/vmailbox
+  notify:
+    - Postmap vmailbox
+    - Restart postfix
+
+# - name: Copy other postfix files
+#   copy:
+#     src: postfix/
+#     dest: /etc/postfix/
+#   notify:
+#     - Restart postfix
+
+- name: Check if postfix is started and enabled
+  systemd:
+    name: postfix
+    state: started
+    enabled: yes
