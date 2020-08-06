@@ -18,6 +18,13 @@
   notify:
     - Restart dovecot
 
+- name: Copy 10-mail.conf file from template
+  template:
+    src: dovecot/conf.d/10-mail.conf
+    dest: /etc/dovecot/conf.d/10-mail.conf
+  notify:
+    - Restart dovecot
+
 - name: Check if dovecot is started and enabled
   systemd:
     name: dovecot
