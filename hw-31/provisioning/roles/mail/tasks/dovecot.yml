@@ -18,6 +18,13 @@
   notify:
     - Restart dovecot
 
+- name: Copy 10-auth.conf file from template
+  template:
+    src: dovecot/10-auth.conf.j2
+    dest: /etc/dovecot/conf.d/10-auth.conf
+  notify:
+    - Restart dovecot
+
 - name: Copy passdb file
   copy:
     src: dovecot/users
