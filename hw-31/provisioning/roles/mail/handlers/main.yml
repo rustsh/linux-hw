@@ -1,4 +1,7 @@
 ---
+- name: Postmap vmailbox
+  command: postmap /etc/postfix/vmailbox
+
 - name: Restart postfix
   systemd:
     name: postfix
@@ -8,6 +11,3 @@
   systemd:
     name: dovecot
     state: restarted
-
-- name: Postmap vmailbox
-  command: postmap /etc/postfix/vmailbox
