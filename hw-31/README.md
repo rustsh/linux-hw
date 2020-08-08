@@ -17,7 +17,7 @@
 
 ### Описание работы
 
-В работе настраивается простейшая связка postfix + dovecot без дополнительных сервисов и баз данных, но с использованием виртуального домена. Все пользователи виртуальных почтовых ящиков ассоциируются со специально созданным в системе пользователем vmail, их пароли хранятся в файле.
+В работе настраивается простейшая связка postfix + dovecot без дополнительных сервисов, баз данных и шифрования, но с использованием виртуального домена. Все пользователи виртуальных почтовых ящиков ассоциируются со специально созданным в системе пользователем vmail, их пароли хранятся в файле.
 
 При выполнении команды `vagrant up` поднимается виртуальная машина mail ([Vagrantfile](Vagrantfile)), которая конфигурируется при помощи Ansible.
 
@@ -76,41 +76,31 @@
 
    - [/etc/dovecot/dovecot.conf](provisioning/roles/mail/files/dovecot/dovecot.conf) — раскомментируются строки:
 
-        ```
-        protocols = imap pop3 lmtp
-        listen = *
-        ```
+       - `protocols = imap pop3 lmtp` — обслуживаемые протоколы;
+       - `listen = *` — список адресов, с которых можно принимать соединения;
 
    - [/etc/dovecot/conf.d/10-auth.conf](provisioning/roles/mail/templates/dovecot/10-auth.conf.j2):
 
-        ```
-        disable_plaintext_auth = no
-        auth_default_realm = virtual.otus
-        auth_mechanisms = plain login
-        !include auth-passwdfile.conf.ext
-        !include auth-static.conf.ext
-        ```
+       - `disable_plaintext_auth = no` — разрешается принимать пароли без шифрования;
+       - `auth_default_realm = virtual.otus` — домен, который подставляется к логину, если он не задан;
+       - `auth_mechanisms = plain login` — способы аутентификации;
+       - `!include auth-passwdfile.conf.ext` — подключается файл **auth-passwdfile.conf.ext** с описанием стратегии хранения паролей (в данной работе пароли хранятся в файле);
+       - `!include auth-static.conf.ext` — подключается файл **auth-static.conf.ext** с описанием стратегии хранения данных пользователей (в данной работе все виртуальные почтовые ящики ассоциируются пользователем vmail);
 
    - [/etc/dovecot/conf.d/10-logging.conf](provisioning/roles/mail/files/dovecot/conf.d/10-logging.conf):
 
-        ```
-        log_path = /var/log/dovecot.log
-        info_log_path = /var/log/dovecot-info.log
-        ```
+       - `log_path = /var/log/dovecot.log` — файл для сообщений об ошибках;
+       - `info_log_path = /var/log/dovecot-info.log` — файл для информационных сообщений;
 
    - [/etc/dovecot/conf.d/10-mail.conf](provisioning/roles/mail/files/dovecot/conf.d/10-mail.conf):
 
-        ```
-        mail_location = maildir:/var/spool/mail/vhosts/%d/%n/Maildir
-        ```
+       - `mail_location = maildir:/var/spool/mail/vhosts/%d/%n/Maildir` — расположение почтовых ящиков, а также стратегия хранения сообщений. Указанное значение `maildir` означает, что хранилище — это каталог, а каждое письмо хранится в отдельном файле. Другая стратегия — `mbox`, когда все письма содержатся в одном общем файле;
 
    - [/etc/dovecot/conf.d/10-ssl.conf](provisioning/roles/mail/files/dovecot/conf.d/10-ssl.conf):
 
-        ```
-        ssl = no
-        ```
+       - `ssl = no` — отключается использование SSL;
 
-   - [/etc/dovecot/conf.d/auth-passwdfile.conf.ext](provisioning/roles/mail/files/dovecot/conf.d/auth-passwdfile.conf.ext):
+   - [/etc/dovecot/conf.d/auth-passwdfile.conf.ext](provisioning/roles/mail/files/dovecot/conf.d/auth-passwdfile.conf.ext) — расскомментируются все строки, кроме указанных:
 
         ```
         passdb {
@@ -119,14 +109,23 @@
         }
         ```
 
-   - [/etc/dovecot/conf.d/auth-static.conf.ext](provisioning/roles/mail/files/dovecot/conf.d/auth-static.conf.ext):
+        Здесь задаётся стратегия хранения паролей (passdb):
+
+          - `driver = passwd-file` — пароли хранятся в файле;
+          - `scheme=plain` — пароли хранятся в открытом виде, без шифрования;
+          - `username_format=%n` — имена пользователей указаны без доменов;
+          - `/etc/dovecot/users` — полный путь до файла с паролями;
+
+   - [/etc/dovecot/conf.d/auth-static.conf.ext](provisioning/roles/mail/files/dovecot/conf.d/auth-static.conf.ext) — расскомментируются все строки, кроме указанных:
 
         ```
         userdb {
           driver = static
-          args = uid=vmail gid=vmail home=/home/%d/%n
+          args = uid=vmail gid=vmail home=/var/spool/mail/vhosts/%d/%n
         }
         ```
+
+        Здесь задаётся стратегия хранения пользователей (userdb). Для всех пользователей мы используем один UID и GID — от UNIX-пользователя vmail. При этом домашний каталог для каждого почтового пользователя должен быть уникален — это задаётся параметром `home=/var/spool/mail/vhosts/%d/%n`. Согласно [документации](https://wiki.dovecot.org/VirtualUsers/Home), домашний каталог не должен совпадать с директорией, в которой хранится почта.
 
 8. В каталог **/etc/dovecot** копируется файл [users](provisioning/roles/mail/files/dovecot/users), в котором хранятся пароли пользователей виртуальных почтовых ящиков.
 9. Dovecot перезапускается.
