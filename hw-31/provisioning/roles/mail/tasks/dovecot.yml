@@ -35,12 +35,3 @@
     name: dovecot
     state: started
     enabled: yes
-
-- name: Change log files ownership to {{ mail_user }}
-  file:
-    path: /var/log/{{ item }}
-    owner: "{{ mail_user }}"
-    group: "{{ mail_user }}"
-  with_items:
-    - dovecot.log
-    - dovecot-info.log
