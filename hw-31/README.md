@@ -159,12 +159,12 @@ rcpt to: student@virtual.otus
 250 2.1.5 Ok
 data
 354 End data with <CR><LF>.<CR><LF>
-Subject: First message
+Subject: The first message
 
 Hello! This is the test message.
 Bye
 .
-250 2.0.0 Ok: queued as 0C0C54064D61
+250 2.0.0 Ok: queued as 8F9AA4064E96
 quit
 221 2.0.0 Bye
 Connection closed by foreign host.
@@ -202,17 +202,17 @@ pass studpass
 +OK Logged in.
 list
 +OK 1 messages:
-1 345
+1 349
 .
 retr 1
-+OK 345 octets
++OK 349 octets
 Return-Path: <teacher@virtual.otus>
 X-Original-To: student@virtual.otus
 Delivered-To: student@virtual.otus
 Received: from host (unknown [192.168.50.1])
-        by mail.otus.lan (Postfix) with ESMTP id 3E32A4064D55
-        for <student@virtual.otus>; Sat,  8 Aug 2020 08:22:39 +0000 (UTC)
-Subject: First message
+        by mail.otus.lan (Postfix) with ESMTP id 8F9AA4064E96
+        for <student@virtual.otus>; Sat,  8 Aug 2020 12:00:17 +0000 (UTC)
+Subject: The first message
 
 Hello! This is the test message.
 Bye
@@ -227,30 +227,28 @@ Connection closed by foreign host.
 ```console
 [root@mail ~]# cd /var/spool/mail/vhosts/virtual.otus/student/Maildir/
 [root@mail Maildir]# ls -l
-total 24
-drwx------. 2 vmail vmail   60 Aug  8 08:29 cur
--rw-------. 1 vmail vmail 1188 Aug  8 08:52 dovecot.index.cache
--rw-------. 1 vmail vmail  884 Aug  8 08:52 dovecot.index.log
--rw-------. 1 vmail vmail   24 Aug  8 08:52 dovecot.mailbox.log
--rw-------. 1 vmail vmail  107 Aug  8 08:29 dovecot-uidlist
--rw-------. 1 vmail vmail    8 Aug  8 08:29 dovecot-uidvalidity
--r--r--r--. 1 vmail vmail    0 Aug  8 08:29 dovecot-uidvalidity.5f2e625d
-drwx------. 2 vmail vmail    6 Aug  8 08:29 new
--rw-------. 1 vmail vmail    6 Aug  8 08:52 subscriptions
-drwx------. 2 vmail vmail    6 Aug  8 08:23 tmp
+total 16
+drwx------. 2 vmail vmail  62 Aug  8 12:08 cur
+-rw-------. 1 vmail vmail 388 Aug  8 12:08 dovecot.index.cache
+-rw-------. 1 vmail vmail 828 Aug  8 12:10 dovecot.index.log
+-rw-------. 1 vmail vmail 109 Aug  8 12:08 dovecot-uidlist
+-rw-------. 1 vmail vmail   8 Aug  8 12:08 dovecot-uidvalidity
+-r--r--r--. 1 vmail vmail   0 Aug  8 12:08 dovecot-uidvalidity.5f2e95ac
+drwx------. 2 vmail vmail   6 Aug  8 12:08 new
+drwx------. 2 vmail vmail   6 Aug  8 12:01 tmp
 [root@mail Maildir]# ls -l new/
 total 0
 [root@mail Maildir]# ls -l cur/
 total 4
--rw-------. 1 vmail vmail 335 Aug  8 08:23 1596875010.V801Ib0c43M481939.mail.otus.lan:2,S
-[root@mail Maildir]# cat cur/1596875010.V801Ib0c43M481939.mail.otus.lan\:2\,S 
+-rw-------. 1 vmail vmail 339 Aug  8 12:01 1596888061.V801I6003b0eM118791.mail.otus.lan:2,S
+[root@mail Maildir]# cat cur/1596888061.V801I6003b0eM118791.mail.otus.lan\:2\,S 
 Return-Path: <teacher@virtual.otus>
 X-Original-To: student@virtual.otus
 Delivered-To: student@virtual.otus
 Received: from host (unknown [192.168.50.1])
-        by mail.otus.lan (Postfix) with ESMTP id 3E32A4064D55
-        for <student@virtual.otus>; Sat,  8 Aug 2020 08:22:39 +0000 (UTC)
-Subject: First message
+        by mail.otus.lan (Postfix) with ESMTP id 8F9AA4064E96
+        for <student@virtual.otus>; Sat,  8 Aug 2020 12:00:17 +0000 (UTC)
+Subject: The first message
 
 Hello! This is the test message.
 Bye
