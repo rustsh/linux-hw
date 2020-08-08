@@ -7,6 +7,7 @@
 - [Проверка работы](#проверка-работы)
   - [Отправка почты](#отправка-почты)
   - [Получение почты](#получение-почты)
+  - [Дополнительные проверки](#дополнительные-проверки)
 
 ### Задание
 
@@ -59,7 +60,7 @@
         manager@virtual.otus virtual.otus/manager/Maildir/
         ```
 
-        Абсолютный путь до почтового хранилища собирается из базового пути (заданного в параметре `virtual_mailbox_base`) и относительного пути. Таким орбазом, полный путь до почтового хранилища ящика student@vitual.otus следующий: **/var/spool/mail/vhosts/virtual.otus/student/Maildir**.
+        Абсолютный путь до почтового хранилища собирается из базового пути (заданного в параметре `virtual_mailbox_base`) и относительного пути. Таким орбазом, полный путь до почтового хранилища ящика **student@vitual.otus** следующий: **/var/spool/mail/vhosts/virtual.otus/student/Maildir**.
 
    - Выполняется команда:
 
@@ -129,19 +130,132 @@
 
 8. В каталог **/etc/dovecot** копируется файл [users](provisioning/roles/mail/files/dovecot/users), в котором хранятся пароли пользователей виртуальных почтовых ящиков.
 9. Dovecot перезапускается.
-10. Пользователь vmail назначается владельцем лог-файлов (**/var/log/dovecot.log** и **/var/log/dovecot-info.log**), иначе отправленные письма не будут приходить на почтовые ящики на удалённых машинах: postfix при отправке должен иметь возможность записи в этот лог-файлы, при этом postfix осуществляет авторизацию средствами dovecot от имени непривилегированной учетной записи vmail.
 
 ### Проверка работы
 
-
+Чтобы создать и настроить виртуальную машину, достаточно выполнить команду `vagrant up`.
 
 #### Отправка почты
 
+Подключимся телнетом к виртуальной машине по IP-адрему, заданному в [Vagrantfile](Vagrantfile), указав порт 25, и отправим письмо на адрес **student@virtual.otus**:
 
+```console
+$ telnet 192.168.50.10 25
+Trying 192.168.50.10...
+Connected to 192.168.50.10.
+Escape character is '^]'.
+220 mail.otus.lan ESMTP Postfix
+ehlo host
+250-mail.otus.lan
+250-PIPELINING
+250-SIZE 10240000
+250-VRFY
+250-ETRN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 DSN
+mail from: teacher@virtual.otus
+250 2.1.0 Ok
+rcpt to: student@virtual.otus
+250 2.1.5 Ok
+data
+354 End data with <CR><LF>.<CR><LF>
+Subject: First message
+
+Hello! This is the test message.
+Bye
+.
+250 2.0.0 Ok: queued as 0C0C54064D61
+quit
+221 2.0.0 Bye
+Connection closed by foreign host.
+```
 
 #### Получение почты
 
+В качестве почтового клиента используется [Thunderbird](https://www.thunderbird.net/).
 
+Подключимся к почтовому аккаунту, указав адрес почты **student@virtual.otus**, пароль от него (заданный в файле [/etc/dovecot/users](provisioning/roles/mail/files/dovecot/users), в данной работе это `studpass`) и IP-адрес виртуальной машины в поле «Server hostname»:
+
+![](images/connect.png)
+
+Так как в работе не используется шифрование, Thunderbird выдаст предупреждение о небезопасном подключении. Примем риски и продолжим:
+
+![](images/warning.png)
+
+При подключении к аккаунту Thunderbird автоматически примет письмо, отправленное нами ранее через Telnet. Если этого не произошло, нужно нажать кнопку «Get messages»:
+
+![](images/message.png)
+
+#### Дополнительные проверки
+
+Можно проверить полученные письма через Telnet:
+
+```console
+$ telnet 192.168.50.10 110
+Trying 192.168.50.10...
+Connected to 192.168.50.10.
+Escape character is '^]'.
++OK Dovecot ready.
+user student
++OK
+pass studpass
++OK Logged in.
+list
++OK 1 messages:
+1 345
+.
+retr 1
++OK 345 octets
+Return-Path: <teacher@virtual.otus>
+X-Original-To: student@virtual.otus
+Delivered-To: student@virtual.otus
+Received: from host (unknown [192.168.50.1])
+        by mail.otus.lan (Postfix) with ESMTP id 3E32A4064D55
+        for <student@virtual.otus>; Sat,  8 Aug 2020 08:22:39 +0000 (UTC)
+Subject: First message
+
+Hello! This is the test message.
+Bye
+.
+quit
++OK Logging out.
+Connection closed by foreign host.
+```
+
+Также можно посмотреть созданные каталоги и письма на виртуальной машине:
+
+```console
+[root@mail ~]# cd /var/spool/mail/vhosts/virtual.otus/student/Maildir/
+[root@mail Maildir]# ls -l
+total 24
+drwx------. 2 vmail vmail   60 Aug  8 08:29 cur
+-rw-------. 1 vmail vmail 1188 Aug  8 08:52 dovecot.index.cache
+-rw-------. 1 vmail vmail  884 Aug  8 08:52 dovecot.index.log
+-rw-------. 1 vmail vmail   24 Aug  8 08:52 dovecot.mailbox.log
+-rw-------. 1 vmail vmail  107 Aug  8 08:29 dovecot-uidlist
+-rw-------. 1 vmail vmail    8 Aug  8 08:29 dovecot-uidvalidity
+-r--r--r--. 1 vmail vmail    0 Aug  8 08:29 dovecot-uidvalidity.5f2e625d
+drwx------. 2 vmail vmail    6 Aug  8 08:29 new
+-rw-------. 1 vmail vmail    6 Aug  8 08:52 subscriptions
+drwx------. 2 vmail vmail    6 Aug  8 08:23 tmp
+[root@mail Maildir]# ls -l new/
+total 0
+[root@mail Maildir]# ls -l cur/
+total 4
+-rw-------. 1 vmail vmail 335 Aug  8 08:23 1596875010.V801Ib0c43M481939.mail.otus.lan:2,S
+[root@mail Maildir]# cat cur/1596875010.V801Ib0c43M481939.mail.otus.lan\:2\,S 
+Return-Path: <teacher@virtual.otus>
+X-Original-To: student@virtual.otus
+Delivered-To: student@virtual.otus
+Received: from host (unknown [192.168.50.1])
+        by mail.otus.lan (Postfix) with ESMTP id 3E32A4064D55
+        for <student@virtual.otus>; Sat,  8 Aug 2020 08:22:39 +0000 (UTC)
+Subject: First message
+
+Hello! This is the test message.
+Bye
+```
 
 <br/>
 
