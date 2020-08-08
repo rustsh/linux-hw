@@ -20,5 +20,5 @@
 
 userdb {
   driver = static
-  args = uid=vmail gid=vmail home=/home/%d/%n
+  args = uid=vmail gid=vmail home=/var/spool/mail/vhosts/%d/%n
 }
