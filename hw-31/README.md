@@ -42,7 +42,7 @@
         smtpd_banner = $myhostname ESMTP $mail_name
         ```
 
-   - В файл [/etc/postfix/main.cf](provisioning/roles/mail/templates/postfix/main.cf.j2) вносятся настройки для виртуальных доменов и почтовых ящиков:
+   - В этот же файл также вносятся настройки для виртуальных доменов и почтовых ящиков:
 
        - `virtual_mailbox_domains = virtual.otus` — перечисление виртуальных доменов, для которых будет приниматься почта;
        - `virtual_mailbox_base = /var/spool/mail/vhosts` — базовый путь (префикс), где будут лежать почтовые ящики;
@@ -52,7 +52,7 @@
        - `virtual_gid_maps = static:5000` — gid владельца всех виртуальных почтовых хранилищ;
        - дополнительно может быть указан параметр `virtual_alias_maps = hash:/etc/postfix/virtual` — путь до файла, в котором могут храниться синонимы для перенаправления почты между доменами. В данной работе не используется.
 
-   - В каталог **/etc/postfix** копируется файл [vmailbox](provisioning/roles/mail/templates/vmailbox.j2) c названиями почтовых ящиков и относительными путями до почтовых хранилищ:
+   - В каталог **/etc/postfix** копируется файл [vmailbox](provisioning/roles/mail/templates/postfix/vmailbox.j2) c названиями почтовых ящиков и относительными путями до почтовых хранилищ:
 
         ```
         student@virtual.otus virtual.otus/student/Maildir/
@@ -85,7 +85,7 @@
        - `auth_default_realm = virtual.otus` — домен, который подставляется к логину, если он не задан;
        - `auth_mechanisms = plain login` — способы аутентификации;
        - `!include auth-passwdfile.conf.ext` — подключается файл **auth-passwdfile.conf.ext** с описанием стратегии хранения паролей (в данной работе пароли хранятся в файле);
-       - `!include auth-static.conf.ext` — подключается файл **auth-static.conf.ext** с описанием стратегии хранения данных пользователей (в данной работе все виртуальные почтовые ящики ассоциируются пользователем vmail);
+       - `!include auth-static.conf.ext` — подключается файл **auth-static.conf.ext** с описанием стратегии хранения информации о пользователях (в данной работе все виртуальные почтовые ящики ассоциируются пользователем vmail);
 
    - [/etc/dovecot/conf.d/10-logging.conf](provisioning/roles/mail/files/dovecot/conf.d/10-logging.conf):
 
@@ -111,10 +111,10 @@
 
         Здесь задаётся стратегия хранения паролей (passdb):
 
-          - `driver = passwd-file` — пароли хранятся в файле;
-          - `scheme=plain` — пароли хранятся в открытом виде, без шифрования;
-          - `username_format=%n` — имена пользователей указаны без доменов;
-          - `/etc/dovecot/users` — полный путь до файла с паролями;
+        - `driver = passwd-file` — пароли хранятся в файле;
+        - `scheme=plain` — пароли хранятся в открытом виде, без шифрования;
+        - `username_format=%n` — имена пользователей указаны без доменов;
+        - `/etc/dovecot/users` — полный путь до файла с паролями;
 
    - [/etc/dovecot/conf.d/auth-static.conf.ext](provisioning/roles/mail/files/dovecot/conf.d/auth-static.conf.ext) — расскомментируются все строки, кроме указанных:
 
@@ -125,7 +125,7 @@
         }
         ```
 
-        Здесь задаётся стратегия хранения пользователей (userdb). Для всех пользователей мы используем один UID и GID — от UNIX-пользователя vmail. При этом домашний каталог для каждого почтового пользователя должен быть уникален — это задаётся параметром `home=/var/spool/mail/vhosts/%d/%n`. Согласно [документации](https://wiki.dovecot.org/VirtualUsers/Home), домашний каталог не должен совпадать с директорией, в которой хранится почта.
+        Здесь задаётся стратегия хранения информации о пользователях (userdb). Для всех пользователей мы используем один UID и GID — от UNIX-пользователя vmail. При этом домашний каталог для каждого почтового пользователя должен быть уникален — это задаётся параметром `home=/var/spool/mail/vhosts/%d/%n`. Согласно [документации](https://wiki.dovecot.org/VirtualUsers/Home), домашний каталог не должен совпадать с директорией, в которой хранится почта (в данной работе **Maildir**).
 
 8. В каталог **/etc/dovecot** копируется файл [users](provisioning/roles/mail/files/dovecot/users), в котором хранятся пароли пользователей виртуальных почтовых ящиков.
 9. Dovecot перезапускается.
@@ -136,7 +136,7 @@
 
 #### Отправка почты
 
-Подключимся телнетом к виртуальной машине по IP-адрему, заданному в [Vagrantfile](Vagrantfile), указав порт 25, и отправим письмо на адрес **student@virtual.otus**:
+Подключимся телнетом к виртуальной машине по IP-адрему, заданному в [Vagrantfile](Vagrantfile), указав порт 25, и отправим письмо на адрес student@virtual.otus:
 
 ```console
 $ telnet 192.168.50.10 25
@@ -174,7 +174,7 @@ Connection closed by foreign host.
 
 В качестве почтового клиента используется [Thunderbird](https://www.thunderbird.net/).
 
-Подключимся к почтовому аккаунту, указав адрес почты **student@virtual.otus**, пароль от него (заданный в файле [/etc/dovecot/users](provisioning/roles/mail/files/dovecot/users), в данной работе это `studpass`) и IP-адрес виртуальной машины в поле «Server hostname»:
+Подключимся к почтовому аккаунту, указав адрес почты student@virtual.otus, пароль от него (заданный в файле [/etc/dovecot/users](provisioning/roles/mail/files/dovecot/users), в данной работе это `studpass`) и IP-адрес виртуальной машины в поле «Server hostname»:
 
 ![](images/connect.png)
 
