@@ -60,7 +60,7 @@
         manager@virtual.otus virtual.otus/manager/Maildir/
         ```
 
-        Абсолютный путь до почтового хранилища собирается из базового пути (заданного в параметре `virtual_mailbox_base`) и относительного пути. Таким орбазом, полный путь до почтового хранилища ящика **student@vitual.otus** следующий: **/var/spool/mail/vhosts/virtual.otus/student/Maildir**.
+        Абсолютный путь до почтового хранилища собирается из базового пути (заданного в параметре `virtual_mailbox_base`) и относительного пути. Таким орбазом, полный путь до почтового хранилища ящика student@virtual.otus следующий: **/var/spool/mail/vhosts/virtual.otus/student/Maildir**.
 
    - Выполняется команда:
 
