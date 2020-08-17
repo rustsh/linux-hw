@@ -1,0 +1,3 @@
+CREATE DATABASE otus;
+CREATE USER 'otus'@'%' IDENTIFIED BY 'otus';
+GRANT ALL PRIVILEGES ON otus.* TO 'otus'@'%';
